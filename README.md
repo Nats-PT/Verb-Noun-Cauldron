@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Verb-Noun Cauldron
 
-## Getting Started
+เว็บไซต์ที่สร้างด้วย Next.js (App Router), TypeScript และ Tailwind CSS
 
-First, run the development server:
+## เริ่มใช้งาน (สำหรับสมาชิกในทีม)
+
+ต้องมี [Node.js](https://nodejs.org) เวอร์ชัน 20 ขึ้นไปก่อน
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/Nats-PT/Verb-Noun-Cauldron.git
+cd Verb-Noun-Cauldron
+npm install        # ติดตั้ง package ครั้งแรกครั้งเดียว
+npm run dev        # เปิด dev server
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+เปิด http://localhost:3000 ในเบราว์เซอร์ แก้ไฟล์แล้ว Save หน้าเว็บจะอัปเดตเอง
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+หยุด dev server ด้วย `Ctrl + C`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## คำสั่งที่ใช้บ่อย
 
-## Learn More
+| คำสั่ง | ทำอะไร |
+| --- | --- |
+| `npm run dev` | รันเว็บบนเครื่องตัวเองระหว่างพัฒนา |
+| `npm run build` | build เวอร์ชันจริงเพื่อเช็คว่าไม่มี error |
+| `npm run lint` | ตรวจโค้ดว่าเขียนผิดหลักตรงไหน |
 
-To learn more about Next.js, take a look at the following resources:
+## โครงสร้างโปรเจกต์
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/
+├── layout.tsx      โครงที่ครอบทุกหน้า (navbar, font)
+├── page.tsx        หน้าแรก            → /
+├── globals.css     จุดที่เปิดใช้ Tailwind
+└── st/
+    └── page.tsx    หน้า st            → /st
+public/             ไฟล์รูปภาพ
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+การเพิ่มหน้าใหม่: สร้างโฟลเดอร์ใน `app/` แล้วใส่ไฟล์ชื่อ `page.tsx` เข้าไป
+ชื่อโฟลเดอร์จะกลายเป็น URL เช่น `app/contact/page.tsx` → `/contact`
 
-## Deploy on Vercel
+## ข้อตกลงของทีม
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- ห้าม commit ไฟล์ `.env` หรือรหัสผ่านใดๆ (`.gitignore` กันไว้ให้แล้ว)
+- commit บ่อยๆ พร้อมข้อความที่บอกได้ว่าทำอะไร
+- แยก branch เมื่อทำฟีเจอร์ใหม่ แล้วเปิด Pull Request เข้า `main`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## เทคโนโลยีที่ใช้
+
+- [Next.js 16](https://nextjs.org/docs) — framework และระบบ routing
+- [React 19](https://react.dev) — สร้าง UI เป็น component
+- [TypeScript](https://www.typescriptlang.org/docs/) — JavaScript ที่มีการตรวจ type
+- [Tailwind CSS 4](https://tailwindcss.com/docs) — จัดหน้าตาด้วย utility class
