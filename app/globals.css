@@ -1,26 +1,42 @@
 @import "tailwindcss";
 
+/*
+ * สีตัวแทนชั่วคราว — พอ UX/UI สรุปสีจริงแล้ว แก้แค่ค่าในบล็อกนี้
+ * ทุกหน้าจะเปลี่ยนตามเอง ไม่ต้องไล่แก้ทีละ component
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #14121c;
+  --surface: #221f2e;
+  --border: #4a4560;
+  --foreground: #f2efe6;
+  --muted: #9a94ad;
+  --primary: #7c5cff;
+  --primary-hover: #6a48f5;
+  --ready: #3ecf6e;
 }
 
+/* ชื่อสี → class ของ Tailwind เช่น bg-surface, text-muted, border-primary */
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-ready: var(--ready);
+
+  --font-pixel: var(--font-boldpixels);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ขนาดตัวอักษร 4 ระดับที่ทีมตกลงกัน → text-head, text-head2, text-body, text-score */
+@theme {
+  --text-head: 60px;
+  --text-head--line-height: 1;
+  --text-head2: 36px;
+  --text-head2--line-height: 1.1;
+  --text-body: 28px; /* text1 และปุ่ม */
+  --text-body--line-height: 1.2;
+  --text-score: 20px; /* เวลา / คะแนน */
+  --text-score--line-height: 1.2;
 }
