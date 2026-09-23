@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Leaderboard from "@/components/Leaderboard";
-import TeamColumn from "@/components/TeamColumn";
 import HelpModal from "./_components/HelpModal";
 import ReadyButton from "./_components/ReadyButton";
+import TeamColumn from "./_components/TeamColumn";
 import { CURRENT_PLAYER_ID, mockLeaderboard, mockPlayers } from "@/lib/mock-data";
 
 export default function LobbyPage() {
