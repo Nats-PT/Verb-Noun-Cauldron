@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import HelpModal from "@/components/HelpModal";
 import Leaderboard from "@/components/Leaderboard";
-import ReadyButton from "@/components/ReadyButton";
 import TeamColumn from "@/components/TeamColumn";
+import HelpModal from "./_components/HelpModal";
+import ReadyButton from "./_components/ReadyButton";
 import { CURRENT_PLAYER_ID, mockLeaderboard, mockPlayers } from "@/lib/mock-data";
 
 export default function LobbyPage() {
