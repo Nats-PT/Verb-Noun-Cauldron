@@ -1,37 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Leaderboard from "@/components/Leaderboard";
 import HelpModal from "./_components/HelpModal";
 import ReadyButton from "./_components/ReadyButton";
 import TeamColumn from "./_components/TeamColumn";
-import { CURRENT_PLAYER_ID, mockLeaderboard, mockPlayers } from "@/lib/mock-data";
+import { mockLeaderboard } from "@/lib/mock-data";
+import {
+  getLobbyState,
+  togglePlayerReady,
+  subscribeToLobby,
+  leaveLobby,
+} from "@/lib/lobby";
+import type { Player } from "@/lib/types";
 
 export default function LobbyPage() {
-  // TODO: เปลี่ยนเป็นข้อมูล real-time จาก Supabase เมื่อ DB พร้อม
-  const [players, setPlayers] = useState(mockPlayers);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [currentPlayerId, setCurrentPlayerId] = useState<string>("");
+  const [team1Title, setTeam1Title] = useState("Team 1");
+  const [team2Title, setTeam2Title] = useState("Team 2");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const me = players.find((p) => p.id === CURRENT_PLAYER_ID);
+  useEffect(() => {
+    let isSubscribed = true;
+
+    async function loadLobby() {
+      const state = await getLobbyState();
+      if (!isSubscribed) return;
+
+      setPlayers(state.players);
+      if (state.currentPlayerId) {
+        setCurrentPlayerId(state.currentPlayerId);
+      }
+      setTeam1Title(state.team1Title);
+      setTeam2Title(state.team2Title);
+      setLoading(false);
+    }
+
+    loadLobby();
+
+    const unsubscribe = subscribeToLobby(() => {
+      loadLobby();
+    });
+
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const me = players.find((p) => p.id === currentPlayerId);
   const isReady = me?.isReady ?? false;
   const readyCount = players.filter((p) => p.isReady).length;
-  const allReady = readyCount === players.length;
+  const allReady = players.length > 0 && readyCount === players.length;
 
-  function toggleReady() {
+  async function handleToggleReady() {
+    if (!currentPlayerId) return;
+
+    // Optimistic UI update
     setPlayers((current) =>
-      current.map((p) => (p.id === CURRENT_PLAYER_ID ? { ...p, isReady: !p.isReady } : p)),
+      current.map((p) =>
+        p.id === currentPlayerId ? { ...p, isReady: !p.isReady } : p
+      )
     );
+
+    await togglePlayerReady(currentPlayerId, isReady);
+  }
+
+  const router = useRouter();
+
+  async function handleLeave() {
+    await leaveLobby();
+    router.push("/login");
   }
 
   // เกมเริ่มเมื่อสตาฟฟ์กด Start! ที่หน้า master — lobby แค่บอกว่ากำลังรออะไรอยู่
   let status: string;
-  if (!isReady) status = "Tap Ready when you're set";
+  if (loading) status = "Loading lobby...";
+  else if (players.length === 0) status = "Waiting for players to join...";
+  else if (!isReady) status = "Tap Ready when you're set";
   else if (!allReady) status = `Waiting for players... ${readyCount}/${players.length}`;
   else status = "Waiting for staff to start...";
 
   return (
     <main className="mx-auto flex h-dvh w-full max-w-md flex-col gap-3 p-4">
-      <header className="flex justify-end">
+      <header className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={handleLeave}
+          aria-label="Leave lobby"
+          className="flex size-12 items-center justify-center rounded-lg border-2 border-border bg-surface text-body hover:border-primary"
+        >
+          &lt;
+        </button>
+
         <button
           type="button"
           onClick={() => setHelpOpen(true)}
@@ -46,14 +110,14 @@ export default function LobbyPage() {
 
       <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
         <TeamColumn
-          title="Team 1"
+          title={team1Title}
           players={players.filter((p) => p.team === 1)}
-          currentPlayerId={CURRENT_PLAYER_ID}
+          currentPlayerId={currentPlayerId}
         />
         <TeamColumn
-          title="Team 2"
+          title={team2Title}
           players={players.filter((p) => p.team === 2)}
-          currentPlayerId={CURRENT_PLAYER_ID}
+          currentPlayerId={currentPlayerId}
         />
       </div>
 
@@ -61,7 +125,7 @@ export default function LobbyPage() {
         <p aria-live="polite" className="text-center text-score text-muted">
           {status}
         </p>
-        <ReadyButton isReady={isReady} onToggle={toggleReady} />
+        <ReadyButton isReady={isReady} onToggle={handleToggleReady} />
       </footer>
 
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
