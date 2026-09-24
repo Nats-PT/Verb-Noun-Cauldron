@@ -1,12 +1,13 @@
 import type { Word } from "@/lib/game/types";
 
 type CauldronProps = {
-  // คำที่ลากลงหม้อแล้ว รอคำอีกชนิดมาเข้าคู่
+  // คำที่ลากลงหม้อแล้ว รอคำอีกชนิดมาเข้าคู่ (คำจะแสดงที่ ComboLabel เหนือหม้อ)
   heldWord: Word | null;
   onReturnWord: () => void;
 };
 
 // TODO ระยะที่ 2: ทำเป็นจุดวาง (droppable) ของ dnd-kit
+// TODO: เปลี่ยนเป็นภาพหม้อจากทีม art (ยังทำไม่เสร็จ) — ตอนนี้เป็นวงกลมตัวแทน
 export default function Cauldron({ heldWord, onReturnWord }: CauldronProps) {
   return (
     <button
@@ -14,21 +15,11 @@ export default function Cauldron({ heldWord, onReturnWord }: CauldronProps) {
       onClick={onReturnWord}
       disabled={!heldWord}
       aria-label={heldWord ? `Take ${heldWord.text} out of the pot` : "Pot"}
-      className="relative mx-auto flex h-24 w-36 shrink-0 flex-col items-center"
+      className={`mx-auto flex size-[min(96px,11svh)] shrink-0 items-center justify-center rounded-full border-4 bg-surface text-score text-muted ${
+        heldWord ? "border-ready" : "border-primary"
+      }`}
     >
-      {/* TODO: เปลี่ยนเป็นภาพหม้อจากทีม art (ยังทำไม่เสร็จ) */}
-      <span className="h-5 w-32 rounded-[50%] border-2 border-muted bg-ready" aria-hidden />
-      <span className="-mt-2 h-16 w-36 rounded-b-full border-2 border-t-0 border-muted bg-surface" aria-hidden />
-
-      {heldWord && (
-        <span
-          className={`absolute top-6 rounded px-2 text-score text-card-text ${
-            heldWord.kind === "verb" ? "bg-verb" : "bg-noun"
-          }`}
-        >
-          {heldWord.text}
-        </span>
-      )}
+      Pot
     </button>
   );
 }

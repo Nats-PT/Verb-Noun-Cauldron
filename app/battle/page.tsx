@@ -7,6 +7,7 @@ import { MONSTERS } from "@/lib/game/monsters";
 import type { Word } from "@/lib/game/types";
 import BattleHeader from "./_components/BattleHeader";
 import Cauldron from "./_components/Cauldron";
+import ComboLabel from "./_components/ComboLabel";
 import Timer from "./_components/Timer";
 import WordColumn from "./_components/WordColumn";
 
@@ -37,19 +38,18 @@ export default function BattlePage() {
         className="mx-auto aspect-[330/257] h-[min(257px,32svh)] max-w-full shrink-0"
       />
 
-      <div className="relative flex items-center justify-center px-[5%]">
-        <p className="text-body">verbs</p>
-        <div className="absolute right-[5%]">
+      {/* 3 ช่อง: ช่องซ้ายว่างไว้ถ่วงให้ข้อความอยู่กลางจอพอดี ส่วน Timer อยู่ช่องขวา */}
+      <div className="grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-[5%]">
+        <span aria-hidden />
+        <ComboLabel heldWord={heldWord} />
+        <div className="justify-self-end">
           <Timer endsAt={endsAt} />
         </div>
       </div>
 
-      {/* หม้อซ้อนทับขอบบนของกรอบการ์ดเหมือนใน Figma */}
-      <div className="relative z-10 -mb-10">
-        <Cauldron heldWord={heldWord} onReturnWord={() => setHeldWord(null)} />
-      </div>
+      <Cauldron heldWord={heldWord} onReturnWord={() => setHeldWord(null)} />
 
-      {/* Figma: ขอบซ้ายขวา 36px ช่องกลาง 42px (ที่ว่างให้หม้อ) */}
+      {/* Figma: ขอบซ้ายขวา 36px ช่องกลาง 42px */}
       <div className="grid min-h-0 flex-1 grid-cols-2 gap-x-[11%] px-[6%]">
         <WordColumn label="Verbs" words={mockVerbs} />
         <WordColumn label="Nouns" words={mockNouns} />
