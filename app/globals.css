@@ -13,6 +13,14 @@
   --primary: #7c5cff;
   --primary-hover: #6a48f5;
   --ready: #3ecf6e;
+  --danger: #e5484d;
+
+  /* การ์ดคำในหน้า battle: ชมพู = verb, ฟ้า = noun */
+  --verb: #f9c9e4;
+  --verb-border: #e46fb4;
+  --noun: #c8f1e2;
+  --noun-border: #4cc3d9;
+  --card-text: #2a2233;
 }
 
 /* ชื่อสี → class ของ Tailwind เช่น bg-surface, text-muted, border-primary */
@@ -25,6 +33,12 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-ready: var(--ready);
+  --color-danger: var(--danger);
+  --color-verb: var(--verb);
+  --color-verb-border: var(--verb-border);
+  --color-noun: var(--noun);
+  --color-noun-border: var(--noun-border);
+  --color-card-text: var(--card-text);
 
   --font-pixel: var(--font-boldpixels);
 }
