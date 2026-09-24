@@ -44,7 +44,7 @@ export default function BattlePage() {
     if (outcome.result === "hit") {
       setFlash({ kind: "hit", verb: outcome.verb.text, noun: outcome.noun.text, damage: outcome.damage });
     } else if (outcome.result === "miss") {
-      // การ์ดที่เพิ่งลากมาจะเด้งกลับที่เดิมเอง เพราะเราไม่ได้ย้ายมันออกจากกระดาน
+      // การ์ดเด้งกลับที่เดิมทั้ง 2 ใบ: ใบที่เพิ่งลากกลับเองเพราะไม่ได้ย้ายออกจากกระดาน ใบที่ค้างอยู่ถูกล้างใน resolveDrop
       setFlash({ kind: "miss", verb: outcome.verb.text, noun: outcome.noun.text });
     } else {
       setFlash(null);
@@ -82,16 +82,16 @@ export default function BattlePage() {
           className="mx-auto aspect-[330/257] h-[min(257px,32svh)] max-w-full shrink-0"
         />
 
-        {/* 3 ช่อง: ช่องซ้ายว่างไว้ถ่วงให้ข้อความอยู่กลางจอพอดี ส่วน Timer อยู่ช่องขวา */}
-        <div className="grid grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-[5%]">
-          <span aria-hidden />
-          <ComboLabel heldWord={battle.held} flash={flash} />
-          <div className="justify-self-end">
-            <Timer endsAt={endsAt} />
+        <Cauldron heldWord={battle.held} onReturnWord={() => setBattle((b) => ({ ...b, held: null }))}>
+          {/* 3 ช่อง: ช่องซ้ายว่างไว้ถ่วงให้ข้อความอยู่กลางจอพอดี ส่วน Timer อยู่ช่องขวา */}
+          <div className="grid w-full grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-[5%]">
+            <span aria-hidden />
+            <ComboLabel heldWord={battle.held} flash={flash} />
+            <div className="justify-self-end">
+              <Timer endsAt={endsAt} />
+            </div>
           </div>
-        </div>
-
-        <Cauldron heldWord={battle.held} onReturnWord={() => setBattle((b) => ({ ...b, held: null }))} />
+        </Cauldron>
 
         {/* Figma: ขอบซ้ายขวา 36px ช่องกลาง 42px */}
         <div className="grid min-h-0 flex-1 grid-cols-2 gap-x-[11%] px-[6%]">

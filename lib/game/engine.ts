@@ -65,7 +65,8 @@ function refillBoard(state: BattleState, usedVerb: Word, usedNoun: Word, ctx: Ga
 
 // ลากคำลงหม้อ:
 // - หม้อว่าง หรือเป็นคำชนิดเดียวกับที่ค้างอยู่ → ค้างคำนี้ไว้แทน
-// - คำคนละชนิด → ตรวจคู่: ถูก = damage + เปลี่ยนการ์ด, ผิด = เสีย streak (คำในหม้อยังค้างอยู่)
+// - คำคนละชนิด → ผสมทันที: ถูก = damage + เปลี่ยนการ์ด, ผิด = เสีย streak และการ์ดเด้งกลับทั้ง 2 ใบ
+//   (ไม่ให้ค้าง verb ไว้แล้วไล่ลอง noun ทีละใบจนกว่าจะถูก)
 export function resolveDrop(state: BattleState, word: Word, ctx: GameContext): DropOutcome {
   const held = state.held;
   if (!held || held.kind === word.kind) {
@@ -76,7 +77,7 @@ export function resolveDrop(state: BattleState, word: Word, ctx: GameContext): D
   const noun = word.kind === "noun" ? word : held;
 
   if (!isValidPair(verb, noun, ctx.pairs)) {
-    return { result: "miss", verb, noun, state: { ...state, wrong: state.wrong + 1, streak: 0 } };
+    return { result: "miss", verb, noun, state: { ...state, held: null, wrong: state.wrong + 1, streak: 0 } };
   }
 
   const damage = calcDamage(state.streak, ctx.rng);

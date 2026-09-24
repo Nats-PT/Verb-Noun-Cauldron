@@ -26,7 +26,7 @@ export type Monster = {
 export type BattleState = {
   verbs: Word[];
   nouns: Word[];
-  // คำที่ค้างอยู่ในหม้อ รอคำอีกชนิดมาเข้าคู่ (การ์ดยังอยู่ในช่องเดิม แค่จางลง)
+  // คำที่ค้างอยู่ในช่องข้างหม้อ รอคำอีกชนิดมาเข้าคู่ (การ์ดในกระดานยังอยู่ที่เดิม แค่จางลง)
   held: Word | null;
   score: number;
   correct: number;
