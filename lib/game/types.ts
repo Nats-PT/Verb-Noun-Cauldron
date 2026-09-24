@@ -12,9 +12,10 @@ export type Monster = {
   maxHp: number;
   // ตัวสุดท้ายตีไม่ตาย แต่ damage ยังนับเป็น score ต่อไปจนหมดเวลา
   endless: boolean;
-  // สีฉากชั่วคราวระหว่างรอภาพจากทีม art
-  tint: string;
-  // path ใน public/ เช่น "/battle/monsters/slime.png" — ยังไม่มีไฟล์ก็ปล่อยว่าง
-  sprite?: string;
-  background?: string;
+  // path ใน public/
+  sprite: string;
+  background: string;
+  // ขนาดภาพต้นฉบับ (px) และขยายกี่เท่า — ต้องเป็นจำนวนเต็ม pixel art จะได้คม
+  spriteSize: number;
+  spriteScale: number;
 };

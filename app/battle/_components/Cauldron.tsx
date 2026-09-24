@@ -16,9 +16,9 @@ export default function Cauldron({ heldWord, onReturnWord }: CauldronProps) {
       aria-label={heldWord ? `Take ${heldWord.text} out of the pot` : "Pot"}
       className="relative mx-auto flex h-24 w-36 shrink-0 flex-col items-center"
     >
-      {/* TODO: เปลี่ยนเป็นภาพหม้อจากทีม art */}
-      <span className="h-5 w-32 rounded-[50%] border-2 border-card-text bg-ready" aria-hidden />
-      <span className="-mt-2 h-16 w-36 rounded-b-full border-2 border-t-0 border-card-text bg-surface" aria-hidden />
+      {/* TODO: เปลี่ยนเป็นภาพหม้อจากทีม art (ยังทำไม่เสร็จ) */}
+      <span className="h-5 w-32 rounded-[50%] border-2 border-muted bg-ready" aria-hidden />
+      <span className="-mt-2 h-16 w-36 rounded-b-full border-2 border-t-0 border-muted bg-surface" aria-hidden />
 
       {heldWord && (
         <span
