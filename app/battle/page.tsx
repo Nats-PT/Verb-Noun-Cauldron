@@ -5,9 +5,10 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { useEffect, useState } from "react";
 import MonsterStage from "@/components/MonsterStage";
 import { resolveDrop } from "@/lib/game/engine";
-import { createMockBattle, createMockEndsAt, mockPairs, mockPool } from "@/lib/game/mock-battle";
+import { createMockBattle, createMockEndsAt } from "@/lib/game/mock-battle";
 import { MONSTERS } from "@/lib/game/monsters";
 import type { Word } from "@/lib/game/types";
+import { WORD_PAIRS, WORD_POOL } from "@/lib/game/words";
 import BattleHeader from "./_components/BattleHeader";
 import Cauldron, { POT_ID } from "./_components/Cauldron";
 import ComboLabel, { type ComboFlash } from "./_components/ComboLabel";
@@ -38,7 +39,7 @@ export default function BattlePage() {
   }, [flash]);
 
   function dropInPot(word: Word) {
-    const outcome = resolveDrop(battle, word, { pairs: mockPairs, pool: mockPool, rng: Math.random });
+    const outcome = resolveDrop(battle, word, { pairs: WORD_PAIRS, pool: WORD_POOL, rng: Math.random });
     setBattle(outcome.state);
 
     if (outcome.result === "hit") {

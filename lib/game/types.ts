@@ -1,9 +1,16 @@
 export type WordKind = "verb" | "noun";
 
+export type CefrLevel = "A2" | "B1";
+
+// หมวดของ noun — เตรียมไว้ทำจุดอ่อนมอนสเตอร์ (มอนสเตอร์แต่ละตัวแพ้ทางหมวดหนึ่ง)
+export type NounCategory = "food" | "home" | "clothes" | "travel" | "school" | "nature";
+
 export type Word = {
   id: string;
   text: string;
   kind: WordKind;
+  level: CefrLevel;
+  category?: NounCategory; // มีเฉพาะ noun
 };
 
 // คู่คำที่ถูก เก็บเป็นข้อความ [verb, noun] เช่น ["eat", "apple"]
