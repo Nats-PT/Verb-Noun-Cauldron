@@ -24,6 +24,8 @@ npm run dev        # เปิด dev server
 | `npm run dev` | รันเว็บบนเครื่องตัวเองระหว่างพัฒนา |
 | `npm run build` | build เวอร์ชันจริงเพื่อเช็คว่าไม่มี error |
 | `npm run lint` | ตรวจโค้ดว่าเขียนผิดหลักตรงไหน |
+| `npm test` | ทดสอบกติกาเกมและคลังคำ (ไม่ต้องเปิด dev server) — **รันทุกครั้งหลังแก้ `lib/game/`** |
+| `npm run test:drag` | ลากการ์ดจริงในหน้า battle ด้วยเมาส์และนิ้ว (ต้องเปิด `npm run dev` ไว้ และมี Chrome/Edge) |
 
 ## โครงสร้างโปรเจกต์
 
