@@ -17,3 +17,27 @@ export type LeaderboardEntry = {
   name: string;
   score: number;
 };
+
+export type DetailedLeaderboardEntry = LeaderboardEntry & {
+  rank: number;
+  stageReached: number;
+  createdAt: string;
+};
+
+export type MatchResultInput = {
+  teamId?: number;
+  teamName?: string;
+  score: number;
+  stageReached?: number;
+};
+
+export type MatchResult = {
+  success: boolean;
+  id?: number;
+  teamName?: string;
+  score?: number;
+  stageReached?: number;
+  rank?: number;
+  createdAt?: string;
+  error?: string;
+};
