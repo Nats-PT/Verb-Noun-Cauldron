@@ -1,33 +1,24 @@
-"use client";
-
-type NameInputProps = {
+interface NameInputProps {
   value: string;
-  onChange: (value: string) => void;
-  maxLength?: number;
-};
+  onChange: (val: string) => void;
+}
 
-export default function NameInput({
-  value,
-  onChange,
-  maxLength = 10,
-}: NameInputProps) {
+export default function NameInput({ value, onChange }: NameInputProps) {
   return (
-    <div className="w-full flex justify-center mt-[47px]">
+    <div className="relative mx-auto flex h-[55px] w-[206px] items-center justify-center">
+      <img
+        src="/input_bg.png"
+        alt=""
+        className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none"
+      />
       <input
         type="text"
         placeholder="Name"
         value={value}
-        maxLength={maxLength}
         onChange={(e) => onChange(e.target.value)}
-        required
-        className="w-[206px] h-[55px] px-4 text-center text-body 
-                   text-foreground border-2 border-border bg-surface 
-                   rounded-2xl placeholder:text-muted focus:outline-none 
-                   focus:border-primary transition shadow-sm"
+        maxLength={15}
+        className="relative z-10 h-full w-full bg-transparent px-4 text-center text-body text-foreground placeholder:text-muted-foreground outline-none select-none"
       />
     </div>
   );
 }
-
-
-        

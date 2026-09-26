@@ -1,23 +1,24 @@
-type PlayButtonProps = {
+interface PlayButtonProps {
   disabled?: boolean;
-  onClick?: () => void;
-};
+}
 
-export default function PlayButton({ disabled = false, onClick }: PlayButtonProps) {
+export default function PlayButton({ disabled }: PlayButtonProps) {
   return (
     <button
       type="submit"
-      onClick={onClick}
       disabled={disabled}
-      className={`w-[206px] h-[55px] rounded-2xl border-2 border-border font-black text-body shadow-md transition-all select-none [-webkit-tap-highlight-color:transparent] ${
-        disabled
-          ? "bg-primary text-muted cursor-not-allowed opacity-60"
-          : "bg-primary text-foreground hover:bg-primary-hover active:scale-95 active:brightness-90 cursor-pointer"
+      className={`relative flex h-[55px] w-[206px] items-center justify-center transition active:scale-95 ${
+        disabled ? "cursor-not-allowed opacity-50 grayscale" : "hover:brightness-110"
       }`}
     >
-      PLAY!
+      <img
+        src="/btn_primary.png"
+        alt=""
+        className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none"
+      />
+      <span className="relative z-10 text-body tracking-wider text-primary-foreground select-none">
+        PLAY!
+      </span>
     </button>
   );
 }
-
-      
