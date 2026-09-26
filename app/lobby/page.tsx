@@ -6,20 +6,21 @@ import Leaderboard from "@/components/Leaderboard";
 import HelpModal from "./_components/HelpModal";
 import ReadyButton from "./_components/ReadyButton";
 import TeamColumn from "./_components/TeamColumn";
-import { mockLeaderboard } from "@/lib/mock-data";
+import { getLeaderboard, subscribeToLeaderboard } from "@/lib/leaderboard";
 import {
   getLobbyState,
   togglePlayerReady,
   subscribeToLobby,
   leaveLobby,
 } from "@/lib/lobby";
-import type { Player } from "@/lib/types";
+import type { LeaderboardEntry, Player } from "@/lib/types";
 
 export default function LobbyPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayerId, setCurrentPlayerId] = useState<string>("");
   const [team1Title, setTeam1Title] = useState("Team 1");
   const [team2Title, setTeam2Title] = useState("Team 2");
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -39,15 +40,27 @@ export default function LobbyPage() {
       setLoading(false);
     }
 
-    loadLobby();
+    async function loadLeaderboard() {
+      const entries = await getLeaderboard(10);
+      if (!isSubscribed) return;
+      setLeaderboard(entries);
+    }
 
-    const unsubscribe = subscribeToLobby(() => {
+    loadLobby();
+    loadLeaderboard();
+
+    const unsubscribeLobby = subscribeToLobby(() => {
       loadLobby();
+    });
+
+    const unsubscribeLeaderboard = subscribeToLeaderboard(() => {
+      loadLeaderboard();
     });
 
     return () => {
       isSubscribed = false;
-      unsubscribe();
+      unsubscribeLobby();
+      unsubscribeLeaderboard();
     };
   }, []);
 
@@ -106,7 +119,7 @@ export default function LobbyPage() {
         </button>
       </header>
 
-      <Leaderboard entries={mockLeaderboard} limit={3} />
+      <Leaderboard entries={leaderboard} limit={3} />
 
       <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
         <TeamColumn
