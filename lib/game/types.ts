@@ -2,7 +2,7 @@ export type WordKind = "verb" | "noun";
 
 export type CefrLevel = "A2" | "B1";
 
-// หมวดของ noun — เตรียมไว้ทำจุดอ่อนมอนสเตอร์ (มอนสเตอร์แต่ละตัวแพ้ทางหมวดหนึ่ง)
+// หมวดของ noun — ใช้เป็นจุดอ่อนมอนสเตอร์ (มอนสเตอร์แต่ละตัวแพ้ทางหมวดหนึ่ง)
 export type NounCategory = "food" | "home" | "clothes" | "travel" | "school" | "nature";
 
 export type Word = {
@@ -19,9 +19,12 @@ export type WordPair = [verb: string, noun: string];
 export type Monster = {
   id: string;
   name: string;
-  maxHp: number;
+  // HP จริง = hpPerPlayer × จำนวนคนในทีม ทีมที่คนไม่เท่ากันจะได้ใช้เวลาตีพอ ๆ กัน
+  hpPerPlayer: number;
   // ตัวสุดท้ายตีไม่ตาย แต่ damage ยังนับเป็น score ต่อไปจนหมดเวลา
   endless: boolean;
+  // ใช้ noun หมวดนี้ตีแรงขึ้น — ปกติมีหมวดเดียว ถ้ามีหลายหมวดจะวนเปลี่ยนทุก WEAKNESS_ROTATE_MS
+  weakTo: NounCategory[];
   // path ใน public/
   sprite: string;
   background: string;
@@ -31,6 +34,8 @@ export type Monster = {
 };
 
 export type BattleState = {
+  // จำนวนคนในทีม ล็อกตอนสตาฟฟ์กด Start — คนหลุดกลางเกม HP ก็ไม่ลด
+  teamSize: number;
   verbs: Word[];
   nouns: Word[];
   // คำที่ค้างอยู่ในช่องข้างหม้อ รอคำอีกชนิดมาเข้าคู่ (การ์ดในกระดานยังอยู่ที่เดิม แค่จางลง)

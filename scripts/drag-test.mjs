@@ -98,7 +98,8 @@ const snapshot = () =>
     const potX = document.querySelector('button.rounded-full').getBoundingClientRect().x;
     const card = document.querySelector('button[aria-label^="Take "][aria-label$=" back"]');
     const held = card ? { text: card.textContent.trim(), side: card.getBoundingClientRect().x < potX ? 'left' : 'right' } : null;
-    return { score, correct, wrong, label, held };
+    const column = (name) => [...document.querySelectorAll('section[aria-label="' + name + '"] [aria-label]')].map(e => e.textContent.trim());
+    return { score, correct, wrong, label, held, verbs: column('Verbs'), nouns: column('Nouns') };
   })()`);
 
 // ---------- จำลองเมาส์ / นิ้ว ----------
@@ -196,6 +197,22 @@ try {
   });
   await step("touch: jacket -> pot", async () => touchDrag(await center("noun jacket"), await pot()), {
     label: "... + jacket",
+    held: { text: "jacket", side: "right" },
+  });
+
+  // ลากการ์ดไปวางทับอีกใบในคอลัมน์เดียวกัน = สลับที่ (read / wear ยังไม่ถูกใช้ อยู่บนกระดานตั้งแต่ต้น)
+  const { verbs, nouns } = await snapshot();
+  const swapped = verbs.map((t) => (t === "read" ? "wear" : t === "wear" ? "read" : t));
+  await step("mouse: read -> wear (swap)", async () => mouseDrag(await center("verb read"), await center("verb wear")), {
+    verbs: swapped,
+    held: { text: "jacket", side: "right" },
+  });
+  await step("touch: read -> wear (swap back)", async () => touchDrag(await center("verb read"), await center("verb wear")), {
+    verbs,
+  });
+  await step("mouse: read -> newspaper (no swap)", async () => mouseDrag(await center("verb read"), await center("noun newspaper")), {
+    verbs,
+    nouns,
     held: { text: "jacket", side: "right" },
   });
 } catch (err) {

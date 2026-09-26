@@ -1,7 +1,8 @@
 import type { Word } from "@/lib/game/types";
 
 export type ComboFlash =
-  | { kind: "hit"; verb: string; noun: string; damage: number }
+  // weak: ตีโดนจุดอ่อน (และไม่ได้ล้มมอนสเตอร์) — ข้อความตรงนี้ไม่ใช้ แต่ MonsterStage ใช้โชว์ weak! ในจังหวะเดียวกัน
+  | { kind: "hit"; verb: string; noun: string; damage: number; weak: boolean }
   | { kind: "miss"; verb: string; noun: string };
 
 type ComboLabelProps = {

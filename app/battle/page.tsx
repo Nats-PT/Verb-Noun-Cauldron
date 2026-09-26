@@ -4,9 +4,10 @@ import { PointerActivationConstraints, PointerSensor } from "@dnd-kit/dom";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useEffect, useState } from "react";
 import MonsterStage from "@/components/MonsterStage";
-import { resolveDrop } from "@/lib/game/engine";
+import { resolveDrop, swapCards } from "@/lib/game/engine";
 import { createMockBattle, createMockEndsAt } from "@/lib/game/mock-battle";
-import { MONSTERS } from "@/lib/game/monsters";
+import { MONSTERS, monsterMaxHp } from "@/lib/game/monsters";
+import { elapsedMs } from "@/lib/game/rules";
 import type { Word } from "@/lib/game/types";
 import { WORD_PAIRS, WORD_POOL } from "@/lib/game/words";
 import BattleHeader from "./_components/BattleHeader";
@@ -14,6 +15,7 @@ import Cauldron, { POT_ID } from "./_components/Cauldron";
 import ComboLabel, { type ComboFlash } from "./_components/ComboLabel";
 import Timer from "./_components/Timer";
 import WordColumn from "./_components/WordColumn";
+import { useNow } from "./_hooks/useNow";
 
 // ระยะห่างอิงจาก Figma (frame 390×844) แต่แปลงเป็นสัดส่วน เพราะพื้นที่จริงในเบราว์เซอร์เตี้ยกว่า frame
 // - h-svh: สูงเท่าพื้นที่ตอนแถบ URL ขยายเต็ม จะไม่มีอะไรจมใต้แถบ
@@ -30,6 +32,7 @@ export default function BattlePage() {
   const [endsAt] = useState(createMockEndsAt);
   const [battle, setBattle] = useState(createMockBattle);
   const [flash, setFlash] = useState<ComboFlash | null>(null);
+  const now = useNow();
 
   // ผลการผสมโชว์แป๊บเดียว แล้วกลับไปแสดงคำในหม้อตามปกติ
   useEffect(() => {
@@ -39,11 +42,24 @@ export default function BattlePage() {
   }, [flash]);
 
   function dropInPot(word: Word) {
-    const outcome = resolveDrop(battle, word, { pairs: WORD_PAIRS, pool: WORD_POOL, rng: Math.random });
+    const outcome = resolveDrop(battle, word, {
+      pairs: WORD_PAIRS,
+      pool: WORD_POOL,
+      rng: Math.random,
+      // ใช้เวลา ณ ตอนปล่อยจริง ไม่ใช่ now ที่เดินทีละวิ — ปล่อยตอนจุดอ่อนเพิ่งเปลี่ยนจะได้นับถูก
+      elapsedMs: elapsedMs(endsAt, Date.now()),
+    });
     setBattle(outcome.state);
 
     if (outcome.result === "hit") {
-      setFlash({ kind: "hit", verb: outcome.verb.text, noun: outcome.noun.text, damage: outcome.damage });
+      setFlash({
+        kind: "hit",
+        verb: outcome.verb.text,
+        noun: outcome.noun.text,
+        damage: outcome.damage,
+        // หมัดที่ล้มมอนสเตอร์ไม่โชว์ weak! — ฉากเปลี่ยนเป็นตัวใหม่แล้ว จะดูเหมือนตัวใหม่แพ้คำนี้
+        weak: outcome.weak && outcome.kills === 0,
+      });
     } else if (outcome.result === "miss") {
       // การ์ดเด้งกลับที่เดิมทั้ง 2 ใบ: ใบที่เพิ่งลากกลับเองเพราะไม่ได้ย้ายออกจากกระดาน ใบที่ค้างอยู่ถูกล้างใน resolveDrop
       setFlash({ kind: "miss", verb: outcome.verb.text, noun: outcome.noun.text });
@@ -66,9 +82,17 @@ export default function BattlePage() {
         }),
       ]}
       onDragEnd={(event) => {
-        if (event.canceled || event.operation.target?.id !== POT_ID) return;
-        const word = event.operation.source?.data?.word as Word | undefined;
-        if (word) dropInPot(word);
+        const { source, target } = event.operation;
+        const word = source?.data?.word as Word | undefined;
+        if (event.canceled || !word || !target) return;
+
+        if (target.id === POT_ID) {
+          dropInPot(word);
+          return;
+        }
+        // วางทับการ์ดอีกใบ (WordCard รับเฉพาะชนิดเดียวกันอยู่แล้ว) → สลับที่
+        const other = target.data?.word as Word | undefined;
+        if (other) setBattle((b) => swapCards(b, word, other));
       }}
     >
       <main className={`mx-auto flex h-svh w-full max-w-md flex-col gap-2 ${safeArea}`}>
@@ -80,6 +104,8 @@ export default function BattlePage() {
         <MonsterStage
           monster={monster}
           hp={battle.monsterHp}
+          maxHp={monsterMaxHp(monster, battle.teamSize)}
+          weakHit={flash?.kind === "hit" && flash.weak}
           className="mx-auto aspect-[330/257] h-[min(257px,32svh)] max-w-full shrink-0"
         />
 
@@ -89,7 +115,7 @@ export default function BattlePage() {
             <span aria-hidden />
             <ComboLabel heldWord={battle.held} flash={flash} />
             <div className="justify-self-end">
-              <Timer endsAt={endsAt} />
+              <Timer endsAt={endsAt} now={now} />
             </div>
           </div>
         </Cauldron>
