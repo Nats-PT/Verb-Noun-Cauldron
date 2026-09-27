@@ -39,5 +39,6 @@ export type MatchResult = {
   stageReached?: number;
   rank?: number;
   createdAt?: string;
+  alreadyRecorded?: boolean;
   error?: string;
 };

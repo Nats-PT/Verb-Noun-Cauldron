@@ -76,6 +76,7 @@ create table if not exists public.players (
 -- ------------------------------------------------------------------------------
 create table if not exists public.leaderboard (
   id bigint generated always as identity primary key,
+  team_id integer unique references public.teams(id) on delete set null,
   team_name text not null,
   score integer not null default 0 check (score >= 0),
   stage_reached smallint not null default 1 check (stage_reached between 1 and 5),
@@ -146,6 +147,7 @@ create trigger enforce_team_capacity
   execute function public.check_team_capacity();
 
 -- Records match completion, updates team to 'finished', and computes 1-indexed global rank
+-- Idempotent: safe against concurrent calls from multiple players on the same team
 create or replace function public.record_match_result(
   p_team_id integer default null,
   p_team_name text default null,
@@ -162,11 +164,43 @@ declare
   v_new_id bigint;
   v_created_at timestamptz;
   v_rank bigint;
+  v_final_score integer := greatest(p_score, 0);
+  v_final_stage smallint := least(greatest(p_stage_reached, 1), 5);
+  v_existing_id bigint;
+  v_existing_name text;
+  v_existing_score integer;
+  v_existing_stage smallint;
+  v_existing_created_at timestamptz;
 begin
-  -- 1. If team_id is provided, resolve team name if missing and update team status to finished
+  -- 1. If team_id is provided, check if it was ALREADY recorded by another teammate
   if p_team_id is not null then
+    select id, team_name, score, stage_reached, created_at
+    into v_existing_id, v_existing_name, v_existing_score, v_existing_stage, v_existing_created_at
+    from public.leaderboard
+    where team_id = p_team_id;
+
+    -- If already recorded, return the existing result and rank immediately!
+    if v_existing_id is not null then
+      select count(*) + 1 into v_rank
+      from public.leaderboard
+      where score > v_existing_score
+         or (score = v_existing_score and created_at < v_existing_created_at);
+
+      return jsonb_build_object(
+        'success', true,
+        'id', v_existing_id,
+        'teamName', v_existing_name,
+        'score', v_existing_score,
+        'stageReached', v_existing_stage,
+        'rank', v_rank,
+        'createdAt', v_existing_created_at,
+        'alreadyRecorded', true
+      );
+    end if;
+
+    -- 2. Mark active team as finished in public.teams
     update public.teams
-    set status = 'finished', score = p_score
+    set status = 'finished', score = v_final_score
     where id = p_team_id
     returning name into v_team_name;
 
@@ -179,23 +213,38 @@ begin
     v_team_name := 'Unknown Team';
   end if;
 
-  -- 2. Insert into leaderboard table
-  insert into public.leaderboard (team_name, score, stage_reached)
-  values (v_team_name, greatest(p_score, 0), least(greatest(p_stage_reached, 1), 5))
-  returning id, created_at into v_new_id, v_created_at;
+  -- 3. Atomic Insert with ON CONFLICT safety (handles concurrent race conditions)
+  if p_team_id is not null then
+    insert into public.leaderboard (team_id, team_name, score, stage_reached)
+    values (p_team_id, v_team_name, v_final_score, v_final_stage)
+    on conflict (team_id) do nothing
+    returning id, created_at into v_new_id, v_created_at;
 
-  -- 3. Calculate rank (1-indexed) based on (score desc, created_at asc)
+    -- If another concurrent transaction inserted first:
+    if v_new_id is null then
+      select id, team_name, score, stage_reached, created_at
+      into v_new_id, v_team_name, v_final_score, v_final_stage, v_created_at
+      from public.leaderboard
+      where team_id = p_team_id;
+    end if;
+  else
+    insert into public.leaderboard (team_name, score, stage_reached)
+    values (v_team_name, v_final_score, v_final_stage)
+    returning id, created_at into v_new_id, v_created_at;
+  end if;
+
+  -- 4. Calculate 1-indexed global rank
   select count(*) + 1 into v_rank
   from public.leaderboard
-  where score > p_score
-     or (score = p_score and created_at < v_created_at);
+  where score > v_final_score
+     or (score = v_final_score and created_at < v_created_at);
 
   return jsonb_build_object(
     'success', true,
     'id', v_new_id,
     'teamName', v_team_name,
-    'score', p_score,
-    'stageReached', p_stage_reached,
+    'score', v_final_score,
+    'stageReached', v_final_stage,
     'rank', v_rank,
     'createdAt', v_created_at
   );

@@ -116,6 +116,7 @@ export async function recordMatchResult(
     stageReached: data?.stageReached,
     rank: data?.rank,
     createdAt: data?.createdAt,
+    alreadyRecorded: data?.alreadyRecorded,
   };
 }
 
