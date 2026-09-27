@@ -50,6 +50,7 @@ create table if not exists public.teams (
   slot integer not null check (slot in (1, 2)),
   status text not null default 'waiting' check (status in ('waiting', 'playing', 'finished')),
   score integer not null default 0,
+  current_stage smallint not null default 1 check (current_stage between 1 and 5),
   created_at timestamptz not null default now()
 );
 
@@ -148,11 +149,12 @@ create trigger enforce_team_capacity
 
 -- Records match completion, updates team to 'finished', and computes 1-indexed global rank
 -- Idempotent: safe against concurrent calls from multiple players on the same team
+-- Automatically reads authoritative score and current_stage from public.teams if not explicitly overridden
 create or replace function public.record_match_result(
   p_team_id integer default null,
   p_team_name text default null,
-  p_score integer default 0,
-  p_stage_reached smallint default 1
+  p_score integer default null,
+  p_stage_reached smallint default null
 )
 returns jsonb
 language plpgsql
@@ -164,8 +166,8 @@ declare
   v_new_id bigint;
   v_created_at timestamptz;
   v_rank bigint;
-  v_final_score integer := greatest(p_score, 0);
-  v_final_stage smallint := least(greatest(p_stage_reached, 1), 5);
+  v_final_score integer;
+  v_final_stage smallint;
   v_existing_id bigint;
   v_existing_name text;
   v_existing_score integer;
@@ -198,19 +200,28 @@ begin
       );
     end if;
 
-    -- 2. Mark active team as finished in public.teams
+    -- 2. Mark active team as finished in public.teams and retrieve/update authoritative score & stage
     update public.teams
-    set status = 'finished', score = v_final_score
+    set status = 'finished',
+        score = case when p_score is not null then greatest(p_score, 0) else public.teams.score end,
+        current_stage = case when p_stage_reached is not null then least(greatest(p_stage_reached, 1), 5) else public.teams.current_stage end
     where id = p_team_id
-    returning name into v_team_name;
+    returning name, score, current_stage into v_team_name, v_final_score, v_final_stage;
 
     if v_team_name is null then
       v_team_name := coalesce(p_team_name, 'Team');
     end if;
   end if;
 
+  -- Default fallbacks if team_id was not provided
   if v_team_name is null or trim(v_team_name) = '' then
     v_team_name := 'Unknown Team';
+  end if;
+  if v_final_score is null then
+    v_final_score := greatest(coalesce(p_score, 0), 0);
+  end if;
+  if v_final_stage is null then
+    v_final_stage := least(greatest(coalesce(p_stage_reached, 1), 1), 5);
   end if;
 
   -- 3. Atomic Insert with ON CONFLICT safety (handles concurrent race conditions)

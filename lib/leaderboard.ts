@@ -96,8 +96,8 @@ export async function recordMatchResult(
   const { data, error } = await supabase.rpc("record_match_result", {
     p_team_id: input.teamId ?? null,
     p_team_name: input.teamName ?? null,
-    p_score: input.score,
-    p_stage_reached: input.stageReached ?? 1,
+    p_score: input.score ?? null,
+    p_stage_reached: input.stageReached ?? null,
   });
 
   if (error) {

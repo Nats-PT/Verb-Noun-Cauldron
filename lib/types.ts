@@ -27,7 +27,7 @@ export type DetailedLeaderboardEntry = LeaderboardEntry & {
 export type MatchResultInput = {
   teamId?: number;
   teamName?: string;
-  score: number;
+  score?: number;
   stageReached?: number;
 };
 
