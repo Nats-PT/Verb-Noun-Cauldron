@@ -4,8 +4,8 @@ type BattleHeaderProps = {
   wrong: number;
 };
 
-// ไอคอนวาดเองด้วย SVG เพราะฟอนต์ BoldPixels ไม่มีตัว ✓ ✕
-function CheckIcon() {
+// ไอคอนวาดเองด้วย SVG เพราะฟอนต์ BoldPixels ไม่มีตัว ✓ ✕ — TimeUpBanner ใช้ด้วย
+export function CheckIcon() {
   return (
     <svg viewBox="0 0 12 12" className="size-5 bg-ready p-0.5" aria-hidden>
       <path d="M2 6.5 5 9.5 10 3" fill="none" stroke="currentColor" strokeWidth="2" />
@@ -13,7 +13,7 @@ function CheckIcon() {
   );
 }
 
-function CrossIcon() {
+export function CrossIcon() {
   return (
     <svg viewBox="0 0 12 12" className="size-5 bg-danger p-0.5" aria-hidden>
       <path d="M3 3 9 9M9 3 3 9" fill="none" stroke="currentColor" strokeWidth="2" />

@@ -6,6 +6,8 @@ type WordColumnProps = {
   label: string;
   words: Word[];
   heldId: string | null;
+  // หมดเวลาแล้ว — การ์ดทุกใบลากไม่ได้
+  locked: boolean;
 };
 
 const SLIDE_MS = 150;
@@ -55,7 +57,7 @@ function useSlideOnReorder(ids: string[]) {
   return ref;
 }
 
-export default function WordColumn({ label, words, heldId }: WordColumnProps) {
+export default function WordColumn({ label, words, heldId, locked }: WordColumnProps) {
   const ref = useSlideOnReorder(words.map((w) => w.id));
 
   return (
@@ -65,7 +67,7 @@ export default function WordColumn({ label, words, heldId }: WordColumnProps) {
       className="flex min-h-0 flex-col justify-center gap-2 rounded-xl border-2 border-primary bg-surface p-2"
     >
       {words.map((word) => (
-        <WordCard key={word.id} word={word} inPot={word.id === heldId} />
+        <WordCard key={word.id} word={word} inPot={word.id === heldId} locked={locked} />
       ))}
     </section>
   );

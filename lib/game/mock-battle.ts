@@ -24,5 +24,15 @@ export function createMockBattle(teamSize = 1): BattleState {
 
 // ของจริงจะมาจาก DB (เวลาที่สตาฟฟ์กด Start + 5 นาที)
 export function createMockEndsAt() {
-  return Date.now() + GAME_DURATION_MS;
+  return Date.now() + mockDurationMs();
+}
+
+// ตอน dev เปิด /battle?seconds=10 ได้ เกมจะยาว 10 วิ — เทสหมดเวลาโดยไม่ต้องรอ 5 นาที
+// (production ไม่สนค่านี้; ฝั่ง server ไม่มี window ก็ใช้ 5 นาทีปกติ)
+function mockDurationMs() {
+  if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+    const seconds = Number(new URLSearchParams(window.location.search).get("seconds"));
+    if (seconds > 0) return seconds * 1000;
+  }
+  return GAME_DURATION_MS;
 }

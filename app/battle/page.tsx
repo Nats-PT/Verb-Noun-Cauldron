@@ -7,15 +7,17 @@ import MonsterStage from "@/components/MonsterStage";
 import { resolveDrop, swapCards } from "@/lib/game/engine";
 import { createMockBattle, createMockEndsAt } from "@/lib/game/mock-battle";
 import { MONSTERS, monsterMaxHp } from "@/lib/game/monsters";
-import { elapsedMs } from "@/lib/game/rules";
+import { elapsedMs, FINISH_DELAY_MS, isTimeUp } from "@/lib/game/rules";
 import type { Word } from "@/lib/game/types";
 import { WORD_PAIRS, WORD_POOL } from "@/lib/game/words";
 import BattleHeader from "./_components/BattleHeader";
 import Cauldron, { POT_ID } from "./_components/Cauldron";
 import ComboLabel, { type ComboFlash } from "./_components/ComboLabel";
 import Timer from "./_components/Timer";
+import TimeUpBanner from "./_components/TimeUpBanner";
 import WordColumn from "./_components/WordColumn";
 import { useNow } from "./_hooks/useNow";
+import { useTimePassed } from "./_hooks/useTimePassed";
 
 // ระยะห่างอิงจาก Figma (frame 390×844) แต่แปลงเป็นสัดส่วน เพราะพื้นที่จริงในเบราว์เซอร์เตี้ยกว่า frame
 // - h-svh: สูงเท่าพื้นที่ตอนแถบ URL ขยายเต็ม จะไม่มีอะไรจมใต้แถบ
@@ -28,11 +30,16 @@ const FLASH_MS = 900;
 
 export default function BattlePage() {
   // TODO: ต่อ DB — endsAt จาก server, ส่งผลการตีขึ้น DB, HP มอนสเตอร์ของทั้งทีมแบบ real-time
-  // TODO: หมดเวลาแล้วต้องล็อกการลาก + ไปหน้าสรุปผล
   const [endsAt] = useState(createMockEndsAt);
   const [battle, setBattle] = useState(createMockBattle);
   const [flash, setFlash] = useState<ComboFlash | null>(null);
   const now = useNow();
+
+  // หมดเวลา → ล็อกกระดาน + ป้าย TIME'S UP; อีก FINISH_DELAY_MS ต่อมา → ไปหน้าสรุป
+  // TODO: ตอน timeUp เรียก recordMatchResult({ teamId }) — รอ PR #6 merge + teamId จากแถว players
+  // TODO: ตอน finished สั่ง router.push("/winner") — รอหน้า winner ของเพื่อน (ชื่อ path ยังไม่ตั้ง)
+  const timeUp = useTimePassed(endsAt);
+  const finished = useTimePassed(endsAt + FINISH_DELAY_MS);
 
   // ผลการผสมโชว์แป๊บเดียว แล้วกลับไปแสดงคำในหม้อตามปกติ
   useEffect(() => {
@@ -69,7 +76,14 @@ export default function BattlePage() {
   }
 
   const monster = MONSTERS[battle.monsterIndex];
-  const heldId = battle.held?.id ?? null;
+  // หมดเวลาแล้วคำที่ค้างในหม้อหายไป (ไม่แก้ state — แค่ไม่แสดง)
+  const held = timeUp ? null : battle.held;
+  const heldId = held?.id ?? null;
+
+  // นับถอยหลัง 3 → 2 → 1 ตาม useNow (ก่อนนาฬิกาเดินรอบแรกหลังหมดเวลา ค่าอาจเกิน 3 จึงกันไว้)
+  const secondsLeft = finished
+    ? null
+    : Math.min(FINISH_DELAY_MS / 1000, Math.max(1, Math.ceil((endsAt + FINISH_DELAY_MS - (now ?? 0)) / 1000)));
 
   return (
     <DragDropProvider
@@ -85,6 +99,8 @@ export default function BattlePage() {
         const { source, target } = event.operation;
         const word = source?.data?.word as Word | undefined;
         if (event.canceled || !word || !target) return;
+        // ลากค้างไว้ตอนหมดเวลาแล้วค่อยปล่อย → ไม่นับ (เช็กเวลาจริงตอนปล่อย ไม่รอ timeUp)
+        if (isTimeUp(endsAt, Date.now())) return;
 
         if (target.id === POT_ID) {
           dropInPot(word);
@@ -100,20 +116,31 @@ export default function BattlePage() {
           <BattleHeader score={battle.score} correct={battle.correct} wrong={battle.wrong} />
         </div>
 
-        {/* Figma 330×257 — จอเตี้ยให้ฉากหดลงก่อน การ์ดจะได้มีที่พอ */}
-        <MonsterStage
-          monster={monster}
-          hp={battle.monsterHp}
-          maxHp={monsterMaxHp(monster, battle.teamSize)}
-          weakHit={flash?.kind === "hit" && flash.weak}
-          className="mx-auto aspect-[330/257] h-[min(257px,32svh)] max-w-full shrink-0"
-        />
+        {/* Figma 330×257 — จอเตี้ยให้ฉากหดลงก่อน การ์ดจะได้มีที่พอ
+            กล่อง relative ครอบไว้ให้ป้าย TIME'S UP วางทับฉากได้ โดยไม่ต้องแก้ MonsterStage (จอ master ใช้ร่วม) */}
+        <div className="relative mx-auto aspect-[330/257] h-[min(257px,32svh)] max-w-full shrink-0">
+          <MonsterStage
+            monster={monster}
+            hp={battle.monsterHp}
+            maxHp={monsterMaxHp(monster, battle.teamSize)}
+            weakHit={flash?.kind === "hit" && flash.weak}
+            className="size-full"
+          />
+          {timeUp && (
+            <TimeUpBanner
+              score={battle.score}
+              correct={battle.correct}
+              wrong={battle.wrong}
+              secondsLeft={secondsLeft}
+            />
+          )}
+        </div>
 
-        <Cauldron heldWord={battle.held} onReturnWord={() => setBattle((b) => ({ ...b, held: null }))}>
+        <Cauldron heldWord={held} locked={timeUp} onReturnWord={() => setBattle((b) => ({ ...b, held: null }))}>
           {/* 3 ช่อง: ช่องซ้ายว่างไว้ถ่วงให้ข้อความอยู่กลางจอพอดี ส่วน Timer อยู่ช่องขวา */}
           <div className="grid w-full grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-[5%]">
             <span aria-hidden />
-            <ComboLabel heldWord={battle.held} flash={flash} />
+            <ComboLabel heldWord={held} flash={flash} />
             <div className="justify-self-end">
               <Timer endsAt={endsAt} now={now} />
             </div>
@@ -122,8 +149,8 @@ export default function BattlePage() {
 
         {/* Figma: ขอบซ้ายขวา 36px ช่องกลาง 42px */}
         <div className="grid min-h-0 flex-1 grid-cols-2 gap-x-[11%] px-[6%]">
-          <WordColumn label="Verbs" words={battle.verbs} heldId={heldId} />
-          <WordColumn label="Nouns" words={battle.nouns} heldId={heldId} />
+          <WordColumn label="Verbs" words={battle.verbs} heldId={heldId} locked={timeUp} />
+          <WordColumn label="Nouns" words={battle.nouns} heldId={heldId} locked={timeUp} />
         </div>
       </main>
     </DragDropProvider>

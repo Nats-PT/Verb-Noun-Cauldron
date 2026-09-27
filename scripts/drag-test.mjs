@@ -99,8 +99,18 @@ const snapshot = () =>
     const card = document.querySelector('button[aria-label^="Take "][aria-label$=" back"]');
     const held = card ? { text: card.textContent.trim(), side: card.getBoundingClientRect().x < potX ? 'left' : 'right' } : null;
     const column = (name) => [...document.querySelectorAll('section[aria-label="' + name + '"] [aria-label]')].map(e => e.textContent.trim());
-    return { score, correct, wrong, label, held, verbs: column('Verbs'), nouns: column('Nouns') };
+    const banner = document.querySelector('[data-time-up]')?.innerText.replace(/\\s+/g, ' ').trim() ?? null;
+    return { score, correct, wrong, label, held, verbs: column('Verbs'), nouns: column('Nouns'), banner };
   })()`);
+
+// รอจนเงื่อนไขเป็นจริง (เช็กทุก 200ms) — ไม่ fix เวลา sleep เพราะหน้าโหลดเร็วช้าไม่เท่ากัน
+async function waitFor(check, timeoutMs) {
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    if (await check()) return;
+    await sleep(200);
+  }
+}
 
 // ---------- จำลองเมาส์ / นิ้ว ----------
 async function mouseDrag(from, to) {
@@ -214,6 +224,28 @@ try {
     verbs,
     nouns,
     held: { text: "jacket", side: "right" },
+  });
+
+  // หมดเวลา: เปิดเกมใหม่ที่ยาวแค่ 8 วิ (?seconds=8 ใช้ได้เฉพาะตอน dev)
+  const bannerHas = (text) => async () => ((await snapshot()).banner ?? "").includes(text);
+  await send("Page.navigate", { url: `${URL}?seconds=8` });
+  await sleep(3000);
+  await step("timed game: eat -> pot (still playing)", async () => mouseDrag(await center("verb eat"), await pot()), {
+    held: { text: "eat", side: "left" },
+    banner: null,
+  });
+  await step("time up: banner shows, held word cleared", async () => waitFor(bannerHas("TIME'S UP!"), 15000), {
+    banner: (v) => /TIME'S UP!/.test(v ?? "") && /Results in \d/.test(v ?? ""),
+    held: null,
+  });
+  // eat ยังค้างอยู่ใน state — ถ้าล็อกไม่ติด apple จะเข้าคู่กับ eat แล้วคะแนนขึ้น
+  await step("time up: apple -> pot does nothing", async () => mouseDrag(await center("noun apple"), await pot()), {
+    score: 0,
+    correct: 0,
+    held: null,
+  });
+  await step("after countdown: waiting for results", async () => waitFor(bannerHas("Waiting for results"), 6000), {
+    banner: (v) => /Waiting for results/.test(v ?? ""),
   });
 } catch (err) {
   failed++;
