@@ -1,22 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TeamId } from "@/lib/types";
 import TeamSelector from "./_components/TeamSelector";
 import PlayButton from "./_components/PlayButton";
 import NameInput from "./_components/NameInput";
 import { useRouter } from "next/navigation";
+import { anonLogin } from "@/lib/anon-login";
+import { leaveLobby } from "@/lib/lobby";
 
 export default function LoginPage() {
   const [selectedTeam, setSelectedTeam] = useState<TeamId | null>(null);
   const [name, setName] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    leaveLobby();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !selectedTeam) return;
-    console.log("Submitting:", { name, team: selectedTeam });
-    router.push("/lobby");
+    if (!name.trim() || !selectedTeam || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      // เรียกใช้ Supabase Anonymous Login พร้อมส่งชื่อและทีม
+      const res = await anonLogin({ username: name, team: selectedTeam });
+      if (res.success) {
+        router.push("/lobby");
+      } else {
+        alert(res.error || "Failed to join team. Please try again.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -50,7 +71,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-[47px]">
-          <PlayButton disabled={!name.trim() || !selectedTeam} />
+          <PlayButton disabled={!name.trim() || !selectedTeam || isLoading} />
         </div>
       </form>
     </main>
