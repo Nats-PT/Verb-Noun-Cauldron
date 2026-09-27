@@ -44,10 +44,15 @@ export default function LoginPage() {
     <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center px-6 overflow-hidden select-none border-x border-border">
       
       <div className="pointer-events-none absolute inset-0 -z-10 flex items-end justify-center">
+        {/* pixel art 180×320 — ขยายเป็นจำนวนเต็ม + pixelated ถึงจะคม
+            ถ้ายืดเต็มจอ (object-cover) จะได้ ×2.1–2.6 ไม่ลงตัว เบราว์เซอร์เกลี่ยสีจนเบลอ
+            จอเตี้ย ×2 (360px), จอสูงตั้งแต่ 780px ×3 (540px ล้นซ้ายขวาได้ หม้ออยู่กลาง) หม้อจะใหญ่พอ ๆ กับเดิม */}
         <img
           src="/bg_login.gif"
           alt="Background Animation"
-          className="h-full w-full object-cover object-bottom translate-y-[90px]" 
+          width={360}
+          height={640}
+          className="w-[360px] max-w-none shrink-0 translate-y-[90px] [image-rendering:pixelated] [@media(min-height:780px)]:w-[540px]"
         />
       </div>
 

@@ -9,7 +9,7 @@ export default function NameInput({ value, onChange }: NameInputProps) {
       <img
         src="/input_bg.png"
         alt=""
-        className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none"
+        className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none [image-rendering:pixelated]"
       />
       <input
         type="text"
@@ -17,7 +17,7 @@ export default function NameInput({ value, onChange }: NameInputProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={15}
-        className="relative z-10 h-full w-full bg-transparent px-4 text-center text-body text-foreground placeholder:text-muted-foreground outline-none select-none"
+        className="relative z-10 h-full w-full bg-transparent px-4 text-center text-body text-foreground placeholder:text-muted outline-none select-none"
       />
     </div>
   );

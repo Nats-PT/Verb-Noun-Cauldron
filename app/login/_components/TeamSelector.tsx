@@ -24,11 +24,11 @@ export default function TeamSelector({
               : "/btn_team_Unselected.png"
           }
           alt="Team 1"
-          className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none"
+          className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none [image-rendering:pixelated]"
         />
         <span
           className={`relative z-10 text-body select-none ${
-            selectedTeam === 1 ? "text-primary-foreground" : "text-muted-foreground"
+            selectedTeam === 1 ? "text-foreground" : "text-muted"
           }`}
         >
           Team 1
@@ -48,11 +48,11 @@ export default function TeamSelector({
               : "/btn_team_Unselected.png"
           }
           alt="Team 2"
-          className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none"
+          className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none [image-rendering:pixelated]"
         />
         <span
           className={`relative z-10 text-body select-none ${
-            selectedTeam === 2 ? "text-primary-foreground" : "text-muted-foreground"
+            selectedTeam === 2 ? "text-foreground" : "text-muted"
           }`}
         >
           Team 2
