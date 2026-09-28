@@ -51,8 +51,19 @@ create table if not exists public.teams (
   status text not null default 'waiting' check (status in ('waiting', 'playing', 'finished')),
   score integer not null default 0,
   current_stage smallint not null default 1 check (current_stage between 1 and 5),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  started_at timestamptz,
+  ends_at timestamptz,
+  team_size smallint not null default 1,
+  monster_hp integer not null default 0
 );
+
+-- Ensure battle columns exist on previously created tables
+alter table public.teams
+  add column if not exists started_at timestamptz,
+  add column if not exists ends_at    timestamptz,
+  add column if not exists team_size  smallint not null default 1,
+  add column if not exists monster_hp integer  not null default 0;
 
 -- Ensure active teams in the same match cannot have duplicate names
 create unique index if not exists idx_teams_unique_active_name 
@@ -265,7 +276,164 @@ $$;
 grant execute on function public.record_match_result to anon, authenticated, service_role;
 
 -- ------------------------------------------------------------------------------
--- 6. Row Level Security (RLS) Policies
+-- 6. Combat Synchronization Functions
+-- ------------------------------------------------------------------------------
+
+-- Returns authoritative server time to calibrate client device clock skew
+create or replace function public.server_now()
+returns timestamptz
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select now();
+$$;
+
+grant execute on function public.server_now() to anon, authenticated, service_role;
+
+-- Starts match for teams: computes team_size, sets started_at, ends_at (now + 5 min), and initializes Stage 1 HP
+create or replace function public.start_match(p_team_ids integer[])
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ends_at timestamptz := now() + interval '5 minutes';
+  v_started_at timestamptz := now();
+  v_updated_count integer := 0;
+  v_team_id integer;
+  v_size integer;
+  v_hp_per_player constant integer := 200; -- Stage 1: Slime
+begin
+  if p_team_ids is null or array_length(p_team_ids, 1) = 0 then
+    return jsonb_build_object(
+      'success', false,
+      'error', 'No team IDs provided',
+      'updatedCount', 0
+    );
+  end if;
+
+  foreach v_team_id in array p_team_ids loop
+    -- Compute team size from players table
+    select count(*) into v_size
+    from public.players
+    where team_id = v_team_id;
+
+    v_size := greatest(coalesce(v_size, 1), 1);
+
+    update public.teams
+    set status = 'playing',
+        started_at = v_started_at,
+        ends_at = v_ends_at,
+        team_size = v_size,
+        current_stage = 1,
+        score = 0,
+        monster_hp = v_hp_per_player * v_size
+    where id = v_team_id and status = 'waiting';
+
+    if found then
+      v_updated_count := v_updated_count + 1;
+    end if;
+  end loop;
+
+  return jsonb_build_object(
+    'success', true,
+    'updatedCount', v_updated_count,
+    'startedAt', to_char(v_started_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'endsAt', to_char(v_ends_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+  );
+end;
+$$;
+
+grant execute on function public.start_match(integer[]) to anon, authenticated, service_role;
+
+-- Records damage hit, applies overflow damage across monsters, stage progression, and kill bonuses
+create or replace function public.record_hit(p_team_id integer, p_damage integer)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  hp_per_player constant integer[] := array[200, 300, 450, 550, 500]; -- Matches lib/game/monsters.ts
+  kill_bonus    constant integer   := 100;                             -- Matches lib/game/scoring.ts
+  t public.teams%rowtype;
+  v_kills integer := 0;
+  v_team_size integer;
+begin
+  if p_damage is null or p_damage < 1 or p_damage > 120 then
+    raise exception 'invalid damage %', p_damage;
+  end if;
+
+  -- Validate player membership
+  if auth.uid() is not null then
+    if not exists (
+      select 1 from public.players
+      where id = auth.uid() and team_id = p_team_id
+    ) then
+      raise exception 'player is not in team %', p_team_id;
+    end if;
+  elsif current_user = 'anon' then
+    raise exception 'unauthenticated caller cannot record hit';
+  end if;
+
+  -- Lock team row to prevent concurrency races across simultaneous attacks
+  select * into t from public.teams where id = p_team_id for update;
+  if not found then
+    raise exception 'team % not found', p_team_id;
+  end if;
+
+  -- Reject if team is not actively playing or past match end + 2s grace period
+  if t.status <> 'playing' or (t.ends_at is not null and now() > t.ends_at + interval '2 seconds') then
+    return jsonb_build_object(
+      'accepted', false,
+      'score', t.score,
+      'currentStage', t.current_stage,
+      'monsterHp', t.monster_hp,
+      'kills', 0
+    );
+  end if;
+
+  v_team_size := greatest(coalesce(t.team_size, 1), 1);
+
+  -- Apply damage & stage transitions
+  if t.current_stage < 5 then
+    t.monster_hp := t.monster_hp - p_damage;
+    while t.monster_hp <= 0 and t.current_stage < 5 loop
+      v_kills := v_kills + 1;
+      t.current_stage := t.current_stage + 1;
+      t.monster_hp := case
+        when t.current_stage = 5 then hp_per_player[5] * v_team_size
+        else t.monster_hp + (hp_per_player[t.current_stage] * v_team_size)
+      end;
+    end loop;
+  end if;
+
+  -- Add damage and kill bonuses to team score
+  t.score := t.score + p_damage + (v_kills * kill_bonus);
+
+  update public.teams
+  set score = t.score,
+      current_stage = t.current_stage,
+      monster_hp = t.monster_hp
+  where id = p_team_id;
+
+  return jsonb_build_object(
+    'accepted', true,
+    'score', t.score,
+    'currentStage', t.current_stage,
+    'monsterHp', t.monster_hp,
+    'kills', v_kills
+  );
+end;
+$$;
+
+grant execute on function public.record_hit(integer, integer) to anon, authenticated, service_role;
+
+-- ------------------------------------------------------------------------------
+-- 7. Row Level Security (RLS) Policies
 -- ------------------------------------------------------------------------------
 alter table public.team_words enable row level security;
 alter table public.teams enable row level security;
