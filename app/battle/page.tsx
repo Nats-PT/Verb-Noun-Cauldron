@@ -1,6 +1,6 @@
 "use client";
 
-import { PointerActivationConstraints, PointerSensor } from "@dnd-kit/dom";
+import { Feedback, PointerActivationConstraints, PointerSensor } from "@dnd-kit/dom";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useEffect, useState } from "react";
 import MonsterStage from "@/components/MonsterStage";
@@ -11,7 +11,7 @@ import { elapsedMs, FINISH_DELAY_MS, isTimeUp } from "@/lib/game/rules";
 import type { Word } from "@/lib/game/types";
 import { WORD_PAIRS, WORD_POOL } from "@/lib/game/words";
 import BattleHeader from "./_components/BattleHeader";
-import Cauldron, { POT_ID } from "./_components/Cauldron";
+import Cauldron, { POT_ID, sinkHeldCard, sinkIntoPot } from "./_components/Cauldron";
 import ComboLabel, { type ComboFlash } from "./_components/ComboLabel";
 import Timer from "./_components/Timer";
 import TimeUpBanner from "./_components/TimeUpBanner";
@@ -72,7 +72,8 @@ export default function BattlePage() {
     return () => clearTimeout(timeout);
   }, [hitAt]);
 
-  function dropInPot(word: Word) {
+  // คืน true ถ้าตีโดน (การ์ดที่ลากมาถูกใช้ไปแล้ว)
+  function dropInPot(word: Word): boolean {
     const outcome = resolveDrop(battle, word, {
       pairs: WORD_PAIRS,
       pool: WORD_POOL,
@@ -99,6 +100,7 @@ export default function BattlePage() {
     } else {
       setFlash(null);
     }
+    return outcome.result === "hit";
   }
 
   const monster = MONSTERS[battle.monsterIndex];
@@ -121,7 +123,12 @@ export default function BattlePage() {
           activationConstraints: [new PointerActivationConstraints.Distance({ value: 5 })],
         }),
       ]}
-      onDragEnd={(event) => {
+      onDragEnd={(event, manager) => {
+        // อนิเมชันตอนปล่อยการ์ด: ปกติการ์ดบินกลับช่องเดิม (ค่า undefined = ใช้ค่าเริ่มต้นของ dnd-kit)
+        // dnd-kit เรียก onDragEnd ก่อนเริ่มอนิเมชัน จึงตั้งค่าใหม่ทุกครั้งที่ปล่อยได้ตรงนี้
+        const feedback = manager.registry.plugins.get(Feedback);
+        if (feedback) feedback.dropAnimation = undefined;
+
         const { source, target } = event.operation;
         const word = source?.data?.word as Word | undefined;
         if (event.canceled || !word || !target) return;
@@ -129,7 +136,15 @@ export default function BattlePage() {
         if (isTimeUp(endsAt, Date.now())) return;
 
         if (target.id === POT_ID) {
-          dropInPot(word);
+          // ตีโดน → การ์ดถูกดูดลงหม้อ (sinkIntoPot เล่นอนิเมชันกับสำเนา) ไม่บินกลับช่องเดิม
+          // ถ้าบินกลับ dnd-kit จะค้างร่างเงาของการ์ดไว้ในคอลัมน์ ~250ms ข้างการ์ดใบใหม่
+          // คอลัมน์ (ที่หุ้มการ์ดพอดี) จะยืดเป็น 5 ใบแล้วหดกลับ
+          if (dropInPot(word)) {
+            // ทั้ง 2 ใบลงหม้อพร้อมกัน: ใบที่ลากมา + ใบที่ค้างอยู่ข้างหม้อ
+            sinkIntoPot(source?.element);
+            sinkHeldCard();
+            if (feedback) feedback.dropAnimation = null;
+          }
           return;
         }
         // วางทับการ์ดอีกใบ (WordCard รับเฉพาะชนิดเดียวกันอยู่แล้ว) → สลับที่
