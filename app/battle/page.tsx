@@ -27,17 +27,27 @@ const safeArea =
   "pl-[max(12px,env(safe-area-inset-left))] pr-[max(12px,env(safe-area-inset-right))]";
 
 const FLASH_MS = 900;
+// มอนสเตอร์เป็นภาพ hit (ตัวแดง) นานเท่านี้หลังโดนตี — โดนรัว ๆ จะนับใหม่ทุกครั้ง ค้างแดงไม่กระพริบ
+const HIT_MS = 300;
+
+// ฉาก 120×90 ขยายเป็นจำนวนเต็ม: ×2 = 240×180, จอสูง (และกว้างพอ) ×3 = 360×270
+// แยกกว้าง/สูง เพราะแถวเวลาใต้ฉากใช้ความกว้างเดียวกัน (เวลาชิดขอบขวาของฉาก)
+const stageWidth = "w-[240px] [@media(min-height:800px)_and_(min-width:384px)]:w-[360px]";
+const stageHeight = "h-[180px] [@media(min-height:800px)_and_(min-width:384px)]:h-[270px]";
 
 export default function BattlePage() {
   // TODO: ต่อ DB — endsAt จาก server, ส่งผลการตีขึ้น DB, HP มอนสเตอร์ของทั้งทีมแบบ real-time
   const [endsAt] = useState(createMockEndsAt);
   const [battle, setBattle] = useState(createMockBattle);
   const [flash, setFlash] = useState<ComboFlash | null>(null);
+  // เวลาที่โดนตีล่าสุด (null = ไม่ได้โดนตีอยู่) — ค่าใหม่ทุกครั้งที่ตี effect ด้านล่างจึงเริ่มนับใหม่
+  const [hitAt, setHitAt] = useState<number | null>(null);
   const now = useNow();
 
   // หมดเวลา → ล็อกกระดาน + ป้าย TIME'S UP; อีก FINISH_DELAY_MS ต่อมา → ไปหน้าสรุป
-  // TODO: ตอน timeUp เรียก recordMatchResult({ teamId }) — รอ PR #6 merge + teamId จากแถว players
-  // TODO: ตอน finished สั่ง router.push("/winner") — รอหน้า winner ของเพื่อน (ชื่อ path ยังไม่ตั้ง)
+  // TODO: ตอน finished (ends_at + 3 วิ) เรียก recordMatchResult({ teamId }) จาก lib/leaderboard.ts
+  //       — รอต่อ DB ให้ได้ teamId (getMyBattleTeam ใน SUPABASE.md) และให้ record_hit ที่มาช้าเข้าครบก่อน
+  // TODO: แล้วสั่ง router.push ไปหน้า winner — รอหน้า winner ของเพื่อน (ชื่อ path ยังไม่ตั้ง)
   const timeUp = useTimePassed(endsAt);
   const finished = useTimePassed(endsAt + FINISH_DELAY_MS);
 
@@ -47,6 +57,20 @@ export default function BattlePage() {
     const timeout = setTimeout(() => setFlash(null), FLASH_MS);
     return () => clearTimeout(timeout);
   }, [flash]);
+
+  // โหลดภาพมอนสเตอร์ทุกตัว (ท่ายืน + ตอนโดนตี รวม ~40KB) ไว้ตั้งแต่เปิดหน้า
+  // ไม่งั้นตอนล้มตัวเก่า ฉากของตัวใหม่อาจว่างแป๊บหนึ่งระหว่างโหลด (เห็นชัดบน Wi-Fi ช้า ๆ ในงาน)
+  useEffect(() => {
+    for (const monster of MONSTERS) {
+      for (const src of [monster.scene, monster.hitScene]) new window.Image().src = src;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (hitAt === null) return;
+    const timeout = setTimeout(() => setHitAt(null), HIT_MS);
+    return () => clearTimeout(timeout);
+  }, [hitAt]);
 
   function dropInPot(word: Word) {
     const outcome = resolveDrop(battle, word, {
@@ -67,6 +91,8 @@ export default function BattlePage() {
         // หมัดที่ล้มมอนสเตอร์ไม่โชว์ weak! — ฉากเปลี่ยนเป็นตัวใหม่แล้ว จะดูเหมือนตัวใหม่แพ้คำนี้
         weak: outcome.weak && outcome.kills === 0,
       });
+      // หมัดที่ล้มมอนสเตอร์ไม่โชว์ภาพ hit ด้วยเหตุผลเดียวกัน — ตัวใหม่โผล่มาในท่ายืนปกติ
+      setHitAt(outcome.kills === 0 ? Date.now() : null);
     } else if (outcome.result === "miss") {
       // การ์ดเด้งกลับที่เดิมทั้ง 2 ใบ: ใบที่เพิ่งลากกลับเองเพราะไม่ได้ย้ายออกจากกระดาน ใบที่ค้างอยู่ถูกล้างใน resolveDrop
       setFlash({ kind: "miss", verb: outcome.verb.text, noun: outcome.noun.text });
@@ -116,13 +142,15 @@ export default function BattlePage() {
           <BattleHeader score={battle.score} correct={battle.correct} wrong={battle.wrong} />
         </div>
 
-        {/* Figma 330×257 — จอเตี้ยให้ฉากหดลงก่อน การ์ดจะได้มีที่พอ
-            กล่อง relative ครอบไว้ให้ป้าย TIME'S UP วางทับฉากได้ โดยไม่ต้องแก้ MonsterStage (จอ master ใช้ร่วม) */}
-        <div className="relative mx-auto aspect-[330/257] h-[min(257px,32svh)] max-w-full shrink-0">
+        {/* ขนาดฉากเป็นจำนวนเต็มเท่าของภาพ (stageWidth/Height) pixel art จะได้คม
+            กล่อง relative ครอบไว้ให้ป้าย TIME'S UP วางทับฉากได้ โดยไม่ต้องแก้ MonsterStage (จอ master ใช้ร่วม)
+            กรอบชมพูตาม design ใช้ ring (วาดทับขอบนอก) ขนาดฉากและตำแหน่งของอย่างอื่นจึงไม่ขยับ */}
+        <div className={`relative mx-auto shrink-0 rounded-lg ring-[3px] ring-primary ${stageWidth} ${stageHeight}`}>
           <MonsterStage
             monster={monster}
             hp={battle.monsterHp}
             maxHp={monsterMaxHp(monster, battle.teamSize)}
+            hit={hitAt !== null}
             weakHit={flash?.kind === "hit" && flash.weak}
             className="size-full"
           />
@@ -137,7 +165,8 @@ export default function BattlePage() {
         </div>
 
         <Cauldron heldWord={held} locked={timeUp} onReturnWord={() => setBattle((b) => ({ ...b, held: null }))}>
-          {/* 3 ช่อง: ช่องซ้ายว่างไว้ถ่วงให้ข้อความอยู่กลางจอพอดี ส่วน Timer อยู่ช่องขวา */}
+          {/* บรรทัดเดียวใต้ฉาก: ข้อความผสมคำกลางจอ + เวลาชิดขวา — ประหยัดที่ หม้อกับการ์ดเลื่อนขึ้นได้
+              3 ช่อง: ช่องซ้ายว่างไว้ถ่วงให้ข้อความอยู่กลางจอพอดี */}
           <div className="grid w-full grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-[5%]">
             <span aria-hidden />
             <ComboLabel heldWord={held} flash={flash} />
@@ -147,8 +176,8 @@ export default function BattlePage() {
           </div>
         </Cauldron>
 
-        {/* Figma: ขอบซ้ายขวา 36px ช่องกลาง 42px */}
-        <div className="grid min-h-0 flex-1 grid-cols-2 gap-x-[11%] px-[6%]">
+        {/* Figma: ขอบซ้ายขวา 36px ช่องกลาง 42px — z-10 ทับครึ่งล่างของหม้อ (ช่องกลางเห็นขาหม้อ) */}
+        <div className="relative z-10 grid min-h-0 flex-1 grid-cols-2 gap-x-[11%] px-[6%]">
           <WordColumn label="Verbs" words={battle.verbs} heldId={heldId} locked={timeUp} />
           <WordColumn label="Nouns" words={battle.nouns} heldId={heldId} locked={timeUp} />
         </div>

@@ -35,7 +35,11 @@
 | `mock-battle.ts` | กระดานเริ่มต้นกับเวลาจบปลอม ระหว่างรอ DB | ต่อ DB แล้วเลิกใช้ |
 | `*.test.ts` | test ของแต่ละไฟล์ (`npm test`) | แก้กติกาแล้วต้องแก้ test ตาม |
 
-ภาพอยู่ใน `public/battle/` (`backgrounds/`, `cards/`, `monsters/`) — pixel art ต้องขยายเป็นจำนวนเต็มเท่า
+ภาพอยู่ใน `public/battle/` — pixel art ต้องขยายเป็นจำนวนเต็มเท่า + `[image-rendering:pixelated]`
+
+- `monsters/<id>-move.gif` ฉาก + มอนสเตอร์ยืนเฉย (120×90, 2 เฟรม) · `monsters/<id>-hit.png` ตอนรับ damage
+- `cards/card-verb.png`, `cards/card-noun.png` การ์ด 84×54 (ยืดแบบ 9-slice ใน `CardFrame.tsx`)
+- `cauldron.png` หม้อ 128×160 (ตัวหม้อจริง 115×103 อยู่ล่าง ข้างบนโปร่งใส)
 
 ## ทดสอบ
 
@@ -45,6 +49,6 @@
 
 ## ยังไม่ได้ทำ (หา `TODO` ในโค้ด)
 
-- ต่อ DB: เวลาจบเกม + จำนวนคนในทีมจาก server, ส่งคะแนนขึ้น DB, HP มอนสเตอร์ของทั้งทีมแบบ real-time
-- หมดเวลาแล้วเรียก `recordMatchResult({ teamId })` และไปหน้า winner (ยังไม่มีหน้า)
-- ภาพหม้อ (ตอนนี้เป็นวงกลมแทน), เอฟเฟกต์, transition ไปหน้าสรุป
+- ต่อ DB: เวลาจบเกม + จำนวนคนในทีมจาก server, ส่งคะแนนขึ้น DB, HP มอนสเตอร์ของทั้งทีมแบบ real-time — **ฝั่ง DB ต้องทำอะไร ดู `SUPABASE.md`**
+- หมดเวลาแล้ว (`ends_at + 3 วิ`) เรียก `recordMatchResult({ teamId })` และไปหน้า winner (ยังไม่มีหน้า)
+- เอฟเฟกต์ (ตัวเลข damage ลอย ฯลฯ), transition ไปหน้าสรุป

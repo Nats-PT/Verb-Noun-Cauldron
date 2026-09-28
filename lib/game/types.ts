@@ -25,12 +25,10 @@ export type Monster = {
   endless: boolean;
   // ใช้ noun หมวดนี้ตีแรงขึ้น — ปกติมีหมวดเดียว ถ้ามีหลายหมวดจะวนเปลี่ยนทุก WEAKNESS_ROTATE_MS
   weakTo: NounCategory[];
-  // path ใน public/
-  sprite: string;
-  background: string;
-  // ขนาดภาพต้นฉบับ (px) และขยายกี่เท่า — ต้องเป็นจำนวนเต็ม pixel art จะได้คม
-  spriteSize: number;
-  spriteScale: number;
+  // ภาพฉาก + มอนสเตอร์ในภาพเดียว (120×90, path ใน public/)
+  // scene = ยืนเฉย ๆ (GIF ขยับ 2 เฟรม), hitScene = ตัวแดงตอนรับ damage
+  scene: string;
+  hitScene: string;
 };
 
 export type BattleState = {

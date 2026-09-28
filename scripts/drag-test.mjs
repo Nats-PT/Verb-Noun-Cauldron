@@ -84,18 +84,19 @@ const center = (label) =>
     return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
   })()`);
 
+// เล็งครึ่งบนของหม้อ — ครึ่งล่างจมอยู่หลังคอลัมน์การ์ด
 const pot = () =>
-  evaluate(`(() => { const r = document.querySelector('button.rounded-full').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  evaluate(`(() => { const r = document.querySelector('[data-pot]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 4 }; })()`);
 
 // มุมขวาบนของ hit box ที่มองไม่เห็น (ขอบจอ ตรงแถวข้อความ) — ห่างจากตัวหม้อ
 const hitboxEdge = () =>
-  evaluate(`(() => { const r = document.querySelector('button.rounded-full').parentElement.parentElement.getBoundingClientRect(); return { x: r.right - 25, y: r.top + 12 }; })()`);
+  evaluate(`(() => { const r = document.querySelector('[data-pot-hitbox]').getBoundingClientRect(); return { x: r.right - 25, y: r.top + 12 }; })()`);
 
 const snapshot = () =>
   evaluate(`(() => {
     const [score, correct, wrong] = (document.querySelector('header')?.innerText.match(/\\d+/g) ?? []).map(Number);
     const label = [...document.querySelectorAll('p')].find(p => /\\+|\\.\\.\\.\\?/.test(p.textContent))?.textContent.trim();
-    const potX = document.querySelector('button.rounded-full').getBoundingClientRect().x;
+    const potX = document.querySelector('[data-pot]').getBoundingClientRect().x;
     const card = document.querySelector('button[aria-label^="Take "][aria-label$=" back"]');
     const held = card ? { text: card.textContent.trim(), side: card.getBoundingClientRect().x < potX ? 'left' : 'right' } : null;
     const column = (name) => [...document.querySelectorAll('section[aria-label="' + name + '"] [aria-label]')].map(e => e.textContent.trim());
@@ -223,6 +224,13 @@ try {
   await step("mouse: read -> newspaper (no swap)", async () => mouseDrag(await center("verb read"), await center("noun newspaper")), {
     verbs,
     nouns,
+    held: { text: "jacket", side: "right" },
+  });
+
+  // การ์ดใบบนสุดอยู่ติดหม้อ (คอลัมน์ทับครึ่งล่างของหม้อ) — ลากไปสลับกับใบที่ 2 ต้องสลับ ไม่ตกลงหม้อ
+  const top = (await snapshot()).verbs;
+  await step("mouse: top verb -> 2nd verb (swap, not pot)", async () => mouseDrag(await center(`verb ${top[0]}`), await center(`verb ${top[1]}`)), {
+    verbs: [top[1], top[0], ...top.slice(2)],
     held: { text: "jacket", side: "right" },
   });
 

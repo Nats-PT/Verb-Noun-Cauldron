@@ -1,9 +1,15 @@
 import { WEAKNESS_ROTATE_MS } from "./rules";
 import type { Monster, NounCategory } from "./types";
 
+// ภาพฉาก + มอนสเตอร์ของแต่ละตัว ขนาด 120×90 ทุกไฟล์
+const scenes = (id: string) => ({
+  scene: `/battle/monsters/${id}-move.gif`,
+  hitScene: `/battle/monsters/${id}-hit.png`,
+});
+
 // ลำดับมอนสเตอร์ที่ทีมต้องตี — HP เป็นค่าตั้งต้น ต้องปรับหลังลองเล่นจริง
 // คิดจาก: คนหนึ่งตีถูกทุก ~7 วิ ได้ damage เฉลี่ย ~50 → ทีมทั่วไปถึง Dragon ราวนาทีที่ 3.5
-// ตัวที่ 4–5 ภาพต้นฉบับ 64px (ตั้งใจให้ใหญ่กว่า) ส่วนตัวที่ 1–3 เป็น 32px
+// HP ต่อคน + KILL_BONUS ต้องตรงกับ record_hit ใน Supabase (ดู app/battle/SUPABASE.md)
 export const MONSTERS: Monster[] = [
   {
     id: "slime",
@@ -12,10 +18,7 @@ export const MONSTERS: Monster[] = [
     endless: false,
     // food มีคู่คำเยอะสุด เหมาะกับด่านแรก
     weakTo: ["food"],
-    sprite: "/battle/monsters/slime.png",
-    background: "/battle/backgrounds/stage1.png",
-    spriteSize: 32,
-    spriteScale: 4,
+    ...scenes("slime"),
   },
   {
     id: "spider",
@@ -23,10 +26,7 @@ export const MONSTERS: Monster[] = [
     hpPerPlayer: 300,
     endless: false,
     weakTo: ["home"],
-    sprite: "/battle/monsters/spider.png",
-    background: "/battle/backgrounds/stage2.png",
-    spriteSize: 32,
-    spriteScale: 4,
+    ...scenes("spider"),
   },
   {
     id: "werewolf",
@@ -34,21 +34,15 @@ export const MONSTERS: Monster[] = [
     hpPerPlayer: 450,
     endless: false,
     weakTo: ["clothes"],
-    sprite: "/battle/monsters/werewolf.png",
-    background: "/battle/backgrounds/stage3.png",
-    spriteSize: 32,
-    spriteScale: 4,
+    ...scenes("werewolf"),
   },
   {
-    id: "octopus",
-    name: "Octopus",
+    id: "kraken",
+    name: "Kraken",
     hpPerPlayer: 550,
     endless: false,
     weakTo: ["travel"],
-    sprite: "/battle/monsters/octopus.png",
-    background: "/battle/backgrounds/stage4.png",
-    spriteSize: 64,
-    spriteScale: 3,
+    ...scenes("kraken"),
   },
   {
     id: "dragon",
@@ -58,10 +52,7 @@ export const MONSTERS: Monster[] = [
     endless: true,
     // วนทุกหมวด เริ่มจาก 2 หมวดที่ตัวอื่นไม่ได้ใช้
     weakTo: ["school", "nature", "food", "home", "clothes", "travel"],
-    sprite: "/battle/monsters/dragon.png",
-    background: "/battle/backgrounds/stage5.png",
-    spriteSize: 64,
-    spriteScale: 3,
+    ...scenes("dragon"),
   },
 ];
 

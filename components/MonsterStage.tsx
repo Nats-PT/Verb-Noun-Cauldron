@@ -6,10 +6,12 @@ type MonsterStageProps = {
   hp: number;
   // HP เต็มขึ้นกับจำนวนคนในทีม จึงรับจากหน้าที่เรียกใช้ (monsterMaxHp)
   maxHp: number;
+  // กำลังรับ damage → ใช้ภาพ hit (ตัวแดง) แทนภาพยืนปกติ
+  hit?: boolean;
   // เพิ่งตีโดนจุดอ่อน → โชว์ "weak!" แป๊บหนึ่ง
   // ไม่บอกหมวดตรง ๆ ให้ผู้เล่นที่สังเกตเดาเองว่าคำแบบไหนแรง
   weakHit?: boolean;
-  // ขนาดกำหนดจากหน้าที่เรียกใช้ — มือถือกับจอ master ใช้สัดส่วนไม่เหมือนกัน
+  // ขนาดกำหนดจากหน้าที่เรียกใช้ — ควรเป็น 120×90 (ขนาดภาพฉาก) คูณจำนวนเต็ม ภาพจะได้คม
   className?: string;
 };
 
@@ -24,18 +26,39 @@ export default function MonsterStage({
   monster,
   hp,
   maxHp,
+  hit = false,
   weakHit = false,
   className = "",
 }: MonsterStageProps) {
   const percent = monster.endless ? 100 : Math.max(0, Math.min(100, (hp / maxHp) * 100));
-  const size = monster.spriteSize * monster.spriteScale;
 
   return (
     <section
       aria-label={`${monster.name} battle`}
       className={`relative overflow-hidden rounded-lg ${className}`}
     >
-      <Image src={monster.background} alt="" fill unoptimized className={`object-cover ${pixelated}`} />
+      {/* ภาพฉากรวมตัวมอนสเตอร์ 2 แบบซ้อนกัน แล้วสลับว่าอันไหนมองเห็น
+          โหลดภาพ hit ไว้ตั้งแต่แรก ตีครั้งแรกจะได้ไม่มีจังหวะภาพว่าง และ GIF ยืนเฉยไม่เริ่มขยับใหม่ทุกครั้งที่โดนตี */}
+      <Image
+        src={monster.scene}
+        alt={monster.name}
+        fill
+        unoptimized
+        // อยู่บนสุดของจอ โหลดทันที ไม่ต้องรอ lazy load
+        loading="eager"
+        data-scene="move"
+        className={`object-cover ${pixelated} ${hit ? "invisible" : ""}`}
+      />
+      <Image
+        src={monster.hitScene}
+        alt=""
+        fill
+        unoptimized
+        // อยู่บนสุดของจอ โหลดทันที ไม่ต้องรอ lazy load
+        loading="eager"
+        data-scene="hit"
+        className={`object-cover ${pixelated} ${hit ? "" : "invisible"}`}
+      />
 
       <div className="absolute inset-x-[20%] top-[5%] flex items-center gap-2">
         <span className={overlayText}>HP</span>
@@ -56,15 +79,6 @@ export default function MonsterStage({
         {monster.endless && <span className={overlayText}>ENDLESS</span>}
         {weakHit && <span className={`${overlayText} text-ready`}>weak!</span>}
       </div>
-
-      <Image
-        src={monster.sprite}
-        alt={monster.name}
-        width={size}
-        height={size}
-        unoptimized
-        className={`absolute bottom-[6%] left-1/2 max-h-[70%] -translate-x-1/2 object-contain ${pixelated}`}
-      />
     </section>
   );
 }

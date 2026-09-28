@@ -44,7 +44,8 @@ export default function WordCard({ word, inPot, locked }: WordCardProps) {
       aria-label={`${word.kind} ${word.text}`}
       // WordColumn ใช้หาการ์ดใบนี้ตอนทำอนิเมชันเลื่อนหลังสลับที่
       data-word-id={word.id}
-      className={`max-h-[72px] min-h-[52px] flex-1 touch-none ${inPot || locked ? "opacity-40" : "cursor-grab"} ${
+      // สูง 72px ถ้าที่พอ ถ้าคอลัมน์ถูกจำกัดความสูง (จอเตี้ย) หดได้ถึง 52px
+      className={`h-[72px] min-h-[52px] shrink touch-none ${inPot || locked ? "opacity-40" : "cursor-grab"} ${
         drag.isDragging ? "z-20 scale-110 cursor-grabbing" : ""
       }`}
     >
