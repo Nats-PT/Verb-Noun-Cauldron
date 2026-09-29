@@ -24,6 +24,8 @@ npm run dev        # เปิด dev server
 | `npm run dev` | รันเว็บบนเครื่องตัวเองระหว่างพัฒนา |
 | `npm run build` | build เวอร์ชันจริงเพื่อเช็คว่าไม่มี error |
 | `npm run lint` | ตรวจโค้ดว่าเขียนผิดหลักตรงไหน |
+| `npm test` | ทดสอบกติกาเกมและคลังคำ (ไม่ต้องเปิด dev server) — **รันทุกครั้งหลังแก้ `lib/game/`** |
+| `npm run test:drag` | ลากการ์ดจริงในหน้า battle ด้วยเมาส์และนิ้ว (ต้องเปิด `npm run dev` ไว้ และมี Chrome/Edge) |
 
 ## โครงสร้างโปรเจกต์
 
@@ -33,10 +35,12 @@ app/
 ├── globals.css     สี + ขนาดตัวอักษรกลางของทั้งเกม
 ├── fonts/          ไฟล์ฟอนต์
 ├── page.tsx        หน้าแรก            → /
-└── lobby/
-    └── page.tsx    หน้า lobby         → /lobby
-components/         ชิ้นส่วน UI ที่ใช้ร่วมกันหลายหน้า (Leaderboard ฯลฯ)
+├── lobby/
+│   └── page.tsx    หน้า lobby         → /lobby
+└── battle/         หน้าเล่นเกม        → /battle  (ไฟล์ไหนทำอะไร: app/battle/README.md)
+components/         ชิ้นส่วน UI ที่ใช้ร่วมกันหลายหน้า (Leaderboard, MonsterStage ฯลฯ)
 lib/
+├── game/           กติกาเกม (damage, คลังคำ, มอนสเตอร์) แยกจากหน้าจอ
 ├── types.ts        หน้าตาข้อมูล (ต้องตรงกับ Supabase)
 └── mock-data.ts    ข้อมูลปลอมระหว่างรอ DB
 public/             ไฟล์รูปภาพ
