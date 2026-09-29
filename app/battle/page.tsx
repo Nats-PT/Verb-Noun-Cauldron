@@ -2,14 +2,23 @@
 
 import { Feedback, PointerActivationConstraints, PointerSensor } from "@dnd-kit/dom";
 import { DragDropProvider } from "@dnd-kit/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import MonsterStage from "@/components/MonsterStage";
+import {
+  broadcastCombatHit,
+  getMyBattleTeam,
+  getServerClockOffset,
+  recordHit,
+  subscribeToBattleTeam,
+  type BattleTeam,
+} from "@/lib/battle";
 import { resolveDrop, swapCards } from "@/lib/game/engine";
 import { createMockBattle, createMockEndsAt } from "@/lib/game/mock-battle";
 import { MONSTERS, monsterMaxHp } from "@/lib/game/monsters";
 import { elapsedMs, FINISH_DELAY_MS, isTimeUp } from "@/lib/game/rules";
 import type { Word } from "@/lib/game/types";
 import { WORD_PAIRS, WORD_POOL } from "@/lib/game/words";
+import { recordMatchResult } from "@/lib/leaderboard";
 import BattleHeader from "./_components/BattleHeader";
 import Cauldron, { POT_ID, sinkHeldCard, sinkIntoPot } from "./_components/Cauldron";
 import ComboLabel, { type ComboFlash } from "./_components/ComboLabel";
@@ -36,20 +45,92 @@ const stageWidth = "w-[240px] [@media(min-height:800px)_and_(min-width:384px)]:w
 const stageHeight = "h-[180px] [@media(min-height:800px)_and_(min-width:384px)]:h-[270px]";
 
 export default function BattlePage() {
-  // TODO: ต่อ DB — endsAt จาก server, ส่งผลการตีขึ้น DB, HP มอนสเตอร์ของทั้งทีมแบบ real-time
-  const [endsAt] = useState(createMockEndsAt);
+  const [team, setTeam] = useState<BattleTeam | null>(null);
+  const [endsAt, setEndsAt] = useState(createMockEndsAt);
   const [battle, setBattle] = useState(createMockBattle);
   const [flash, setFlash] = useState<ComboFlash | null>(null);
   // เวลาที่โดนตีล่าสุด (null = ไม่ได้โดนตีอยู่) — ค่าใหม่ทุกครั้งที่ตี effect ด้านล่างจึงเริ่มนับใหม่
   const [hitAt, setHitAt] = useState<number | null>(null);
   const now = useNow();
+  const matchRecordedRef = useRef(false);
 
   // หมดเวลา → ล็อกกระดาน + ป้าย TIME'S UP; อีก FINISH_DELAY_MS ต่อมา → ไปหน้าสรุป
-  // TODO: ตอน finished (ends_at + 3 วิ) เรียก recordMatchResult({ teamId }) จาก lib/leaderboard.ts
-  //       — รอต่อ DB ให้ได้ teamId (getMyBattleTeam ใน SUPABASE.md) และให้ record_hit ที่มาช้าเข้าครบก่อน
-  // TODO: แล้วสั่ง router.push ไปหน้า winner — รอหน้า winner ของเพื่อน (ชื่อ path ยังไม่ตั้ง)
   const timeUp = useTimePassed(endsAt);
   const finished = useTimePassed(endsAt + FINISH_DELAY_MS);
+
+  // ดึงข้อมูลทีมจาก Supabase และเทียบเวลานาฬิกากับ server
+  // ถ้าเปิดเล่นตรง ๆ (ไม่ได้เข้าห้อง lobby) จะ fallback ใช้ mock ต่อไปโดยอัตโนมัติ
+  useEffect(() => {
+    let isMounted = true;
+    async function initBattle() {
+      try {
+        const [myTeam, clockOffset] = await Promise.all([
+          getMyBattleTeam(),
+          getServerClockOffset(),
+        ]);
+        if (!isMounted || !myTeam) return;
+
+        setTeam(myTeam);
+
+        if (myTeam.endsAt) {
+          const serverEndMs = new Date(myTeam.endsAt).getTime();
+          setEndsAt(serverEndMs - clockOffset);
+        }
+
+        const monsterIndex = Math.max(0, Math.min(MONSTERS.length - 1, myTeam.currentStage - 1));
+        setBattle((b) => ({
+          ...b,
+          teamSize: myTeam.teamSize,
+          monsterIndex,
+          monsterHp: myTeam.monsterHp,
+          score: myTeam.score,
+        }));
+      } catch (err) {
+        console.warn("[BattlePage] Using mock battle state:", err);
+      }
+    }
+
+    initBattle();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // ซิงค์ HP, ด่าน, และคะแนนของทีมแบบ Realtime เมื่อเพื่อนในทีมตีโดน
+  useEffect(() => {
+    if (!team?.id) return;
+
+    const unsubscribe = subscribeToBattleTeam(team.id, {
+      onTeamChange: (updatedTeam) => {
+        setTeam(updatedTeam);
+        const monsterIndex = Math.max(0, Math.min(MONSTERS.length - 1, updatedTeam.currentStage - 1));
+        setBattle((b) => ({
+          ...b,
+          score: updatedTeam.score,
+          monsterIndex,
+          monsterHp: updatedTeam.monsterHp,
+        }));
+      },
+      onCombatHit: () => {
+        // เพื่อนร่วมทีมตีโดน → มอนสเตอร์ขึ้นภาพ hit (ตัวแดง) ชั่วขณะ
+        setHitAt(Date.now());
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [team?.id]);
+
+  // เมื่อหมดเวลา + 3 วิ บันทึกคะแนนเข้า leaderboard ผ่าน atomic RPC
+  useEffect(() => {
+    if (finished && team?.id && !matchRecordedRef.current) {
+      matchRecordedRef.current = true;
+      recordMatchResult({ teamId: team.id }).catch((err) => {
+        console.error("[BattlePage] Failed to record match result:", err);
+      });
+    }
+  }, [finished, team?.id]);
 
   // ผลการผสมโชว์แป๊บเดียว แล้วกลับไปแสดงคำในหม้อตามปกติ
   useEffect(() => {
@@ -94,6 +175,21 @@ export default function BattlePage() {
       });
       // หมัดที่ล้มมอนสเตอร์ไม่โชว์ภาพ hit ด้วยเหตุผลเดียวกัน — ตัวใหม่โผล่มาในท่ายืนปกติ
       setHitAt(outcome.kills === 0 ? Date.now() : null);
+
+      // ส่งผลการตีขึ้น Realtime Broadcast (~20ms) และบันทึกลง Database RPC
+      if (team?.id) {
+        broadcastCombatHit(team.id, {
+          playerName: team.name,
+          verb: outcome.verb.text,
+          noun: outcome.noun.text,
+          damage: outcome.damage,
+          weak: outcome.weak,
+        }).catch((err) => console.error("[broadcastCombatHit]", err));
+
+        recordHit(team.id, outcome.damage).catch((err) =>
+          console.error("[recordHit]", err)
+        );
+      }
     } else if (outcome.result === "miss") {
       // การ์ดเด้งกลับที่เดิมทั้ง 2 ใบ: ใบที่เพิ่งลากกลับเองเพราะไม่ได้ย้ายออกจากกระดาน ใบที่ค้างอยู่ถูกล้างใน resolveDrop
       setFlash({ kind: "miss", verb: outcome.verb.text, noun: outcome.noun.text });
