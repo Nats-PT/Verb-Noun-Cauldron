@@ -12,8 +12,8 @@
     "test:drag": "node scripts/drag-test.mjs"
   },
   "dependencies": {
-    "@dnd-kit/dom": "0.5.0",
-    "@dnd-kit/react": "0.5.0",
+    "@dnd-kit/dom": "^0.5.0",
+    "@dnd-kit/react": "^0.5.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.0",
     "next": "16.3.5",
