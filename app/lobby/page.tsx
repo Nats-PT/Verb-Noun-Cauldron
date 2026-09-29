@@ -23,6 +23,7 @@ export default function LobbyPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     let isSubscribed = true;
@@ -30,6 +31,12 @@ export default function LobbyPage() {
     async function loadLobby() {
       const state = await getLobbyState();
       if (!isSubscribed) return;
+
+      // When the match is started by staff, automatically navigate to /battle
+      if (state.isPlaying) {
+        router.push("/battle");
+        return;
+      }
 
       setPlayers(state.players);
       if (state.currentPlayerId) {
@@ -81,8 +88,6 @@ export default function LobbyPage() {
 
     await togglePlayerReady(currentPlayerId, isReady);
   }
-
-  const router = useRouter();
 
   async function handleLeave() {
     await leaveLobby();

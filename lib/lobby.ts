@@ -8,6 +8,7 @@ export type LobbyState = {
   team1Id?: number;
   team2Id?: number;
   players: Player[];
+  isPlaying?: boolean;
 };
 
 /**
@@ -75,6 +76,10 @@ export async function getLobbyState(): Promise<LobbyState> {
     };
   });
 
+  const currentPlayerRow = playersData?.find((p) => p.id === currentPlayerId);
+  const myTeam = teamsData?.find((t) => t.id === currentPlayerRow?.team_id);
+  const isPlaying = myTeam?.status === "playing";
+
   return {
     currentPlayerId,
     team1Title,
@@ -82,6 +87,7 @@ export async function getLobbyState(): Promise<LobbyState> {
     team1Id: team1?.id,
     team2Id: team2?.id,
     players,
+    isPlaying: Boolean(isPlaying),
   };
 }
 
