@@ -19,7 +19,7 @@ export default function LeaderboardRow({ entry }: Props) {
   return (
     <div className="grid grid-cols-[60px_1fr_80px] items-center text-score text-foreground">
       <div className="text-left">{formatRank(entry.rank)}</div>
-      <div className="text-left truncate px-8">{entry.name || "UNKNOWN"}</div>
+      <div className="text-center truncate px-2">{entry.name || "UNKNOWN"}</div>
       <div className="text-right tracking-wider">{formatScore(entry.score)}</div>
     </div>
   );

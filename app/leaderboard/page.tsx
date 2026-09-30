@@ -11,22 +11,38 @@ export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<DetailedLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchLeaderboard = async () => {
-    try {
-      const data = await getDetailedLeaderboard(50);
-      setLeaderboard(data);
-    } catch (error) {
-      console.error("Failed to load leaderboard:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchLeaderboard();
-    const unsubscribe = subscribeToLeaderboard(() => fetchLeaderboard());
-    return () => unsubscribe();
+    let cancelled = false;
+    const load = () =>
+      getDetailedLeaderboard(10)
+        .then((data) => {
+          if (!cancelled) setLeaderboard(data);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+
+    load();
+    const unsubscribe = subscribeToLeaderboard(load);
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
+
+  const displayRows: DetailedLeaderboardEntry[] = Array.from({ length: 10 }, (_, index) => {
+    const rank = index + 1;
+    if (leaderboard[index]) {
+      return leaderboard[index];
+    }
+    return {
+      rank,
+      name: "---",
+      score: "------",
+      team_id: rank,
+    } as unknown as DetailedLeaderboardEntry;
+  });
 
   return (
     <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center p-3 select-none overflow-hidden bg-background">
@@ -43,10 +59,10 @@ export default function LeaderboardPage() {
           />
         </div>
 
-        <div className="relative z-10 flex h-full flex-col px-7 sm:px-9 pt-10 pb-8">
+        <div className="relative z-10 flex h-full flex-col px-9 pt-10 pb-8">
           <LeaderboardHeader />
 
-          <div className="w-full flex-1 flex flex-col justify-between py-3 overflow-hidden">
+          <div className="w-full flex-1 flex flex-col gap-1 py-3 overflow-hidden">
             {loading ? (
               <div className="flex h-full items-center justify-center text-muted text-score font-pixel animate-pulse">
                 LOADING...
