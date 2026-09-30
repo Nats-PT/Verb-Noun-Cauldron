@@ -38,8 +38,8 @@ export default function LeaderboardPage() {
     }
     return {
       rank,
-      name: "---",
-      score: "------",
+      name: "***********",
+      score: "_______",
       team_id: rank,
     } as unknown as DetailedLeaderboardEntry;
   });
@@ -59,10 +59,10 @@ export default function LeaderboardPage() {
           />
         </div>
 
-        <div className="relative z-10 flex h-full flex-col px-9 pt-10 pb-8">
+        <div className="relative z-10 flex h-full flex-col px-10 pt-10 pb-8">
           <LeaderboardHeader />
 
-          <div className="w-full flex-1 flex flex-col gap-1 py-3 overflow-hidden">
+          <div className="w-full flex-1 flex flex-col justify-between py-3 overflow-hidden">
             {loading ? (
               <div className="flex h-full items-center justify-center text-muted text-score font-pixel animate-pulse">
                 LOADING...
@@ -72,7 +72,7 @@ export default function LeaderboardPage() {
                 NO RECORDS YET
               </div>
             ) : (
-              leaderboard.map((entry) => (
+              displayRows.map((entry) => (
                 <LeaderboardRow key={entry.id || entry.rank} entry={entry} />
               ))
             )}
