@@ -7,7 +7,7 @@ export default function NameInput({ value, onChange }: NameInputProps) {
   return (
     <div className="relative mx-auto flex h-[55px] w-[206px] items-center justify-center">
       <img
-        src="/input_bg.png"
+        src="/login/input-bg.png"
         alt=""
         className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none [image-rendering:pixelated]"
       />
