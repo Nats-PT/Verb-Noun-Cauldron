@@ -20,8 +20,8 @@ export default function TeamSelector({
         <img
           src={
             selectedTeam === 1
-              ? "/btn_team_Selected.png"
-              : "/btn_team_Unselected.png"
+              ? "/login/btn-team-selected.png"
+              : "/login/btn-team-unselected.png"
           }
           alt="Team 1"
           className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none [image-rendering:pixelated]"
@@ -44,8 +44,8 @@ export default function TeamSelector({
         <img
           src={
             selectedTeam === 2
-              ? "/btn_team_Selected.png"
-              : "/btn_team_Unselected.png"
+              ? "/login/btn-team-selected.png"
+              : "/login/btn-team-unselected.png"
           }
           alt="Team 2"
           className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none [image-rendering:pixelated]"

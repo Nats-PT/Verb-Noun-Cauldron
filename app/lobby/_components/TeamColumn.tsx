@@ -1,4 +1,5 @@
 import { TEAM_SIZE, type Player } from "@/lib/types";
+import { pixelFrame } from "@/lib/pixel-frame";
 
 type TeamColumnProps = {
   title: string;
@@ -11,7 +12,11 @@ export default function TeamColumn({ title, players, currentPlayerId }: TeamColu
   const emptySlots = Math.max(TEAM_SIZE - players.length, 0);
 
   return (
-    <section className="flex min-h-0 flex-col rounded-lg border-2 border-border bg-surface p-3">
+    // กรอบ pixel จาก art — ขอบ layout คง 2px เท่ากรอบ CSS เดิม ของข้างในจะได้ไม่ขยับ
+    <section
+      style={pixelFrame("/lobby/frame-player.png", { borderWidth: 2 })}
+      className="flex min-h-0 flex-col p-3 [image-rendering:pixelated]"
+    >
       <h2 className="text-center text-body">
         {title}
         <span className="block text-score text-muted">
@@ -28,7 +33,7 @@ export default function TeamColumn({ title, players, currentPlayerId }: TeamColu
               className={`rounded border-2 px-2 py-1 ${isMe ? "border-primary" : "border-transparent"}`}
             >
               <p className="truncate text-body">{player.name}</p>
-              <p className={`text-score ${player.isReady ? "text-ready" : "text-muted"}`}>
+              <p className={`text-score ${player.isReady ? "text-primary" : "text-muted"}`}>
                 {player.isReady ? "READY" : "waiting"}
                 {isMe && <span className="text-primary"> (you)</span>}
               </p>

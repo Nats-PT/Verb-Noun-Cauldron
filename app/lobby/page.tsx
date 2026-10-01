@@ -13,7 +13,21 @@ import {
   subscribeToLobby,
   leaveLobby,
 } from "@/lib/lobby";
+import { pixelFrame } from "@/lib/pixel-frame";
 import type { LeaderboardEntry, Player } from "@/lib/types";
+
+// ปุ่มสี่เหลี่ยมเล็กมุมบน (< และ ?) 36×36 ตาม redline ใช้กรอบ pixel จาก art
+const iconButtonFrame = pixelFrame("/lobby/frame-question.png");
+const iconButton =
+  "flex size-9 items-center justify-center text-score [image-rendering:pixelated] hover:brightness-125";
+
+// ระยะแนวตั้งตาม redline ของ art (Figma 390×844 = พื้นที่ใช้งาน 797) แต่ Safari เหลือ ~664
+// fluid(สั้น, สูง) = ค่าที่จอ 664 → ค่าที่จอ 797 เป็นเส้นตรง (ไม่ต่ำ/สูงเกินสองค่านี้)
+// คอลัมน์ทีมจึงได้ที่ ~320 เท่า Figma ทั้งสองขนาดจอ ส่วนช่องว่างอื่นบีบลงแทน
+function fluid(short: number, tall: number) {
+  const perPx = (tall - short) / (797 - 664);
+  return `clamp(${short}px, calc(${short}px + (100svh - 664px) * ${perPx.toFixed(4)}), ${tall}px)`;
+}
 
 export default function LobbyPage() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -48,7 +62,7 @@ export default function LobbyPage() {
     }
 
     async function loadLeaderboard() {
-      const entries = await getLeaderboard(10);
+      const entries = await getLeaderboard(3);
       if (!isSubscribed) return;
       setLeaderboard(entries);
     }
@@ -103,13 +117,18 @@ export default function LobbyPage() {
   else status = "Waiting for staff to start...";
 
   return (
-    <main className="mx-auto flex h-dvh w-full max-w-md flex-col gap-3 p-4">
+    // redline (จอ 797): บน 26 · ปุ่ม 36 · 18 · Leaderboard 177 · 18 · ทีม 320 (ห่างกัน 11) · 64 · Ready 55 · ล่าง 77
+    <main
+      className="mx-auto flex h-dvh w-full max-w-md flex-col px-[18px]"
+      style={{ paddingTop: fluid(16, 26), paddingBottom: fluid(24, 77) }}
+    >
       <header className="flex items-center justify-between">
         <button
           type="button"
           onClick={handleLeave}
           aria-label="Leave lobby"
-          className="flex size-12 items-center justify-center rounded-lg border-2 border-border bg-surface text-body hover:border-primary"
+          style={iconButtonFrame}
+          className={iconButton}
         >
           &lt;
         </button>
@@ -118,15 +137,18 @@ export default function LobbyPage() {
           type="button"
           onClick={() => setHelpOpen(true)}
           aria-label="How to play"
-          className="size-12 rounded-lg border-2 border-border bg-surface text-body hover:border-primary"
+          style={iconButtonFrame}
+          className={iconButton}
         >
           ?
         </button>
       </header>
 
-      <Leaderboard entries={leaderboard} limit={3} />
+      <div className="shrink-0" style={{ marginTop: fluid(12, 18), height: fluid(150, 177) }}>
+        <Leaderboard entries={leaderboard} rows={3} className="flex h-full flex-col" />
+      </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
+      <div className="grid min-h-0 flex-1 grid-cols-2 gap-[11px]" style={{ marginTop: fluid(12, 18) }}>
         <TeamColumn
           title={team1Title}
           players={players.filter((p) => p.team === 1)}
@@ -139,7 +161,11 @@ export default function LobbyPage() {
         />
       </div>
 
-      <footer className="flex flex-col gap-2">
+      {/* redline มีแค่ช่องว่าง 64 กับปุ่ม — ข้อความสถานะเราเก็บไว้ (กายสั่งไม่เอาอะไรออก) วางกลางช่องว่างนั้น */}
+      <footer
+        className="flex flex-col items-center"
+        style={{ marginTop: fluid(8, 20), rowGap: fluid(8, 20) }}
+      >
         <p aria-live="polite" className="text-center text-score text-muted">
           {status}
         </p>

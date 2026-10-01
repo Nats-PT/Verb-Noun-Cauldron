@@ -12,11 +12,11 @@ export default function PlayButton({ disabled }: PlayButtonProps) {
       }`}
     >
       <img
-        src="/btn_primary.png"
+        src="/login/btn-primary.png"
         alt=""
         className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-fill select-none [image-rendering:pixelated]"
       />
-      <span className="relative z-10 text-body tracking-wider text-foreground select-none">
+      <span className="relative z-10 text-body tracking-wider text-accent select-none">
         PLAY!
       </span>
     </button>

@@ -82,12 +82,11 @@ type CauldronProps = {
   children: ReactNode;
 };
 
-// คอลัมน์การ์ดทับส่วนล่างของหม้อ 24px (หม้อสูง 103px) — ทับน้อยกว่าใน design
-// คอลัมน์จะได้อยู่ที่เดิมหลังย้ายข้อความผสมคำขึ้นไปใต้ฉาก อ่านง่าย ไม่เบียด
+// คอลัมน์การ์ดทับส่วนล่างของหม้อ 49px (หม้อสูง 103px) — ตาม redline ของ art: ใต้ฉากถึงบนคอลัมน์ 100px
 // ใช้ค่าเดียวกันทั้ง margin ติดลบ และขอบล่างของ hit box — ถ้าแก้ต้องแก้คู่กัน
-// -mb-[32px] = จม 24px + ชดเชย gap-2 (8px) ของ main
-const SINK_MARGIN = "-mb-[32px]";
-const HITBOX_BOTTOM = "bottom-[24px]";
+// -mb-[57px] = จม 49px + ชดเชย gap-2 (8px) ของ main
+const SINK_MARGIN = "-mb-[57px]";
+const HITBOX_BOTTOM = "bottom-[49px]";
 
 // การ์ดที่ค้างข้างหม้อ: มีคำถึงจะโผล่ ไม่มีก็ว่างเปล่า (ไม่มีกรอบช่องให้เห็น) แตะเพื่อเอาคืน
 function HeldCard({ kind, word, onReturnWord }: { kind: WordKind; word: Word | null; onReturnWord: () => void }) {
