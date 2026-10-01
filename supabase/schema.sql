@@ -363,7 +363,7 @@ declare
   v_kills integer := 0;
   v_team_size integer;
 begin
-  if p_damage is null or p_damage < 1 or p_damage > 120 then
+  if p_damage is null or p_damage < 1 or p_damage > 150 then
     raise exception 'invalid damage %', p_damage;
   end if;
 
