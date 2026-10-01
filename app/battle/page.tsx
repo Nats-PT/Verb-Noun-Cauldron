@@ -64,7 +64,8 @@ export default function BattlePage() {
   const finished = useTimePassed(endsAt + FINISH_DELAY_MS);
 
   // ดึงข้อมูลทีมจาก Supabase และเทียบเวลานาฬิกากับ server
-  // ถ้าเปิดเล่นตรง ๆ (ไม่ได้เข้าห้อง lobby) จะ fallback ใช้ mock ต่อไปโดยอัตโนมัติ
+  // ถ้าเปิดเล่นตรง ๆ (ไม่ได้เข้าห้อง lobby) หรือทีมยังไม่ถูกกด Start จะ fallback ใช้ mock ต่อไปโดยอัตโนมัติ
+  // ทีมที่ยังรออยู่ (waiting) มี monster_hp = 0 และไม่มี ends_at — ถ้าเอามาใช้ มอนสเตอร์จะเริ่มด้วยเลือด 0
   useEffect(() => {
     let isMounted = true;
     async function initBattle() {
@@ -73,7 +74,7 @@ export default function BattlePage() {
           getMyBattleTeam(),
           getServerClockOffset(),
         ]);
-        if (!isMounted || !myTeam) return;
+        if (!isMounted || !myTeam || myTeam.status !== "playing") return;
 
         setTeam(myTeam);
 
