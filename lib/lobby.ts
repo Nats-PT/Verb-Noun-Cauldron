@@ -8,7 +8,7 @@ export type LobbyState = {
   team1Id?: number;
   team2Id?: number;
   players: Player[];
-  isPlaying?: boolean;
+  isPlaying: boolean;
 };
 
 /**
@@ -23,12 +23,18 @@ export async function getLobbyState(): Promise<LobbyState> {
   } = await supabase.auth.getUser();
   const currentPlayerId = user?.id ?? null;
 
-  // 2. Fetch active waiting/playing teams for Slot 1 and Slot 2
-  const { data: teamsData, error: teamsError } = await supabase
-    .from("teams")
-    .select("id, name, slot, status")
-    .in("status", ["waiting", "playing"])
-    .order("created_at", { ascending: false });
+  // 2. Fetch waiting teams for Slot 1 and Slot 2 — must pick the same team as anonLogin
+  //    (newest *waiting* team per slot). A team that is already playing must not take the slot,
+  //    otherwise players queued for the next round see an empty lobby.
+  //    In parallel, check whether the current player's own team has started (redirect to /battle).
+  const [{ data: teamsData, error: teamsError }, isPlaying] = await Promise.all([
+    supabase
+      .from("teams")
+      .select("id, name, slot")
+      .eq("status", "waiting")
+      .order("created_at", { ascending: false }),
+    isMyTeamPlaying(currentPlayerId),
+  ]);
 
   if (teamsError) {
     console.error("[getLobbyState] Error fetching teams:", teamsError.message);
@@ -53,6 +59,8 @@ export async function getLobbyState(): Promise<LobbyState> {
       team1Id: team1?.id,
       team2Id: team2?.id,
       players: [],
+      // Right after Start there may be no waiting team left at all — still redirect
+      isPlaying,
     };
   }
 
@@ -76,10 +84,6 @@ export async function getLobbyState(): Promise<LobbyState> {
     };
   });
 
-  const currentPlayerRow = playersData?.find((p) => p.id === currentPlayerId);
-  const myTeam = teamsData?.find((t) => t.id === currentPlayerRow?.team_id);
-  const isPlaying = myTeam?.status === "playing";
-
   return {
     currentPlayerId,
     team1Title,
@@ -87,8 +91,39 @@ export async function getLobbyState(): Promise<LobbyState> {
     team1Id: team1?.id,
     team2Id: team2?.id,
     players,
-    isPlaying: Boolean(isPlaying),
+    isPlaying,
   };
+}
+
+/**
+ * True when the given player's team has been started by the Master screen.
+ * Looked up directly from the player's row, since playing teams are not part of the lobby list.
+ */
+async function isMyTeamPlaying(playerId: string | null): Promise<boolean> {
+  if (!playerId) return false;
+  const supabase = createClient();
+
+  const { data: player, error: playerError } = await supabase
+    .from("players")
+    .select("team_id")
+    .eq("id", playerId)
+    .maybeSingle();
+
+  if (playerError) {
+    console.error("[isMyTeamPlaying] Error fetching player:", playerError.message);
+  }
+  if (!player) return false;
+
+  const { data: team, error: teamError } = await supabase
+    .from("teams")
+    .select("status")
+    .eq("id", player.team_id)
+    .maybeSingle();
+
+  if (teamError) {
+    console.error("[isMyTeamPlaying] Error fetching team:", teamError.message);
+  }
+  return team?.status === "playing";
 }
 
 /**
