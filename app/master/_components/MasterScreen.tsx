@@ -21,6 +21,9 @@ import PrepareScreen from "./PrepareScreen";
 
 type Dialog = "cancel" | "reset" | null;
 
+// โหลดข้อมูลใหม่เองทุกเท่านี้ ถึง realtime จะเงียบ (1 รอบ = 3 query เบา ๆ)
+const POLL_MS = 10_000;
+
 // สมองของจอ master: ดึงข้อมูล + ฟัง realtime แล้วเลือกจอเองตามสถานะ (กฎอยู่ใน pickView)
 // forcedView มาจาก /master?view=... ใช้ตอนพัฒนาจอที่ยังไม่ถึงคิวในเกมจริง
 export default function MasterScreen({ forcedView }: { forcedView: MasterView | null }) {
@@ -65,9 +68,19 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
     });
     const unsubscribe = subscribeToMaster(load);
 
+    // กันพลาดเผื่อ realtime เงียบไปโดยไม่รู้ตัว (จอ TV เปิดทั้งวัน): หน้าต่างกลับมาให้เห็น → โหลดใหม่ทันที
+    // + โหลดใหม่ทุก POLL_MS — ช้าสุดจอตามทันใน 10 วิ แทนที่จะค้างจนมีคนกด refresh
+    function onVisible() {
+      if (document.visibilityState === "visible") load();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    const poll = setInterval(load, POLL_MS);
+
     return () => {
       active = false;
       unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(poll);
     };
   }, []);
 

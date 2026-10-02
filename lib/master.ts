@@ -225,7 +225,14 @@ export function subscribeToMaster(onUpdate: () => void): () => void {
     .channel("master-realtime")
     .on("postgres_changes", { event: "*", schema: "public", table: "teams" }, onUpdate)
     .on("postgres_changes", { event: "*", schema: "public", table: "players" }, onUpdate)
-    .subscribe();
+    .subscribe((status, err) => {
+      // SUBSCRIBED มาทั้งตอนต่อครั้งแรกและทุกครั้งที่ต่อกลับหลังหลุด — realtime ไม่ส่ง event ที่พลาดไปย้อนหลัง
+      // เลยต้องโหลดใหม่เอง ไม่งั้นคนที่เข้ามาระหว่างหลุดไม่ขึ้นจอจนกด refresh
+      // (เจอจริง: หน้าต่าง master ถูกบังนาน ๆ → Chrome หน่วง timer → heartbeat ไม่ทัน → server ตัด)
+      if (status === "SUBSCRIBED") onUpdate();
+      // CLOSED = ตอนเราปิดเอง (ออกจากหน้า) ไม่ต้องเตือน
+      else if (status !== "CLOSED") console.warn("[subscribeToMaster]", status, err?.message ?? "");
+    });
 
   return () => {
     supabase.removeChannel(channel);
