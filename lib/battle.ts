@@ -86,6 +86,50 @@ export async function getMyBattleTeam(): Promise<BattleTeam | null> {
   return mapTeam(team as DbTeamRow);
 }
 
+export type MyMatchStatus =
+  | { kind: "playing"; team: BattleTeam }
+  | { kind: "waiting" } // still in the lobby (not started yet)
+  | { kind: "finished" } // ended normally (a teammate already recorded the result)
+  | { kind: "removed" } // staff pressed Cancel match / Reset all on the master screen
+  | { kind: "unknown" }; // not logged in, or a network error — don't act on it
+
+/**
+ * Checks the current player's match: when the battle page opens, and again when the phone wakes up
+ * and may have missed realtime events.
+ * Cancel match / Reset all (lib/master.ts) set the team to 'finished' with ends_at = null and delete the player rows,
+ * so "removed" = logged in but no player row, or a finished team without ends_at (a normal finish keeps ends_at).
+ * Unlike getMyBattleTeam, a failed request is "unknown" rather than null — a flaky network must not kick players out.
+ */
+export async function getMyMatchStatus(): Promise<MyMatchStatus> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) return { kind: "unknown" };
+
+  const { data: player, error: playerError } = await supabase
+    .from("players")
+    .select("team_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (playerError) return { kind: "unknown" };
+  if (!player) return { kind: "removed" };
+
+  const { data: team, error: teamError } = await supabase
+    .from("teams")
+    .select("id, name, status, score, current_stage, monster_hp, team_size, ends_at, started_at")
+    .eq("id", player.team_id)
+    .maybeSingle();
+  if (teamError) return { kind: "unknown" };
+  if (!team) return { kind: "removed" };
+
+  if (team.status === "playing") return { kind: "playing", team: mapTeam(team as DbTeamRow) };
+  if (team.status === "waiting") return { kind: "waiting" };
+  return team.ends_at === null ? { kind: "removed" } : { kind: "finished" };
+}
+
 /**
  * Calculates clock skew in milliseconds between server time and local device clock.
  * Usage: synchronizedServerTime ≈ Date.now() + offset

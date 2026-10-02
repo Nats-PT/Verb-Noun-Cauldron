@@ -1,7 +1,7 @@
 // ทดสอบกฎเลือกจอของ master — รันด้วย `npm test`
 import { describe, expect, it } from "vitest";
 import { FINISH_DELAY_MS } from "./game/rules";
-import { pickView, startableTeamIds, WINNER_SHOW_MS, type MasterState, type MasterTeam } from "./master";
+import { cancellableTeamIds, pickView, startableTeamIds, WINNER_SHOW_MS, type MasterState, type MasterTeam } from "./master";
 import type { TeamId } from "./types";
 
 function team(id: number, slot: TeamId, playerCount: number, endsAt: number | null = null): MasterTeam {
@@ -61,5 +61,22 @@ describe("ทีมที่ได้เริ่มตอนกด Start", () =
     expect(startableTeamIds({ ...empty, waiting: { 1: team(5, 1, 2), 2: team(6, 2, 0) } })).toEqual([5]);
     expect(startableTeamIds({ ...empty, waiting: { 1: team(5, 1, 2), 2: team(6, 2, 4) } })).toEqual([5, 6]);
     expect(startableTeamIds(empty)).toEqual([]);
+  });
+});
+
+describe("ทีมที่โดนหยุดตอนกด Cancel match", () => {
+  const endsAt = 1_000_000;
+
+  it("หยุดได้เฉพาะทีมที่กำลังเล่นและยังไม่หมดเวลา", () => {
+    const state: MasterState = { ...empty, lastMatch: [team(1, 1, 3, endsAt), team(2, 2, 2, endsAt)] };
+    expect(cancellableTeamIds(state, endsAt - 1)).toEqual([1, 2]);
+    // หมดเวลาแล้ว มือถือกำลังบันทึกผล — ห้ามยกเลิก
+    expect(cancellableTeamIds(state, endsAt)).toEqual([]);
+  });
+
+  it("ไม่นับทีมที่บันทึกผลไปแล้ว (finished) หรือไม่มีแมตช์เลย", () => {
+    const finished = { ...team(1, 1, 3, endsAt), status: "finished" as const };
+    expect(cancellableTeamIds({ ...empty, lastMatch: [finished, team(2, 2, 2, endsAt)] }, 0)).toEqual([2]);
+    expect(cancellableTeamIds(empty, 0)).toEqual([]);
   });
 });

@@ -9,6 +9,8 @@ export type LobbyState = {
   team2Id?: number;
   players: Player[];
   isPlaying: boolean;
+  // Staff pressed Reset all on the master screen (our player row is gone) → go back to /login
+  isRemoved: boolean;
 };
 
 /**
@@ -27,13 +29,13 @@ export async function getLobbyState(): Promise<LobbyState> {
   //    (newest *waiting* team per slot). A team that is already playing must not take the slot,
   //    otherwise players queued for the next round see an empty lobby.
   //    In parallel, check whether the current player's own team has started (redirect to /battle).
-  const [{ data: teamsData, error: teamsError }, isPlaying] = await Promise.all([
+  const [{ data: teamsData, error: teamsError }, { isPlaying, isRemoved }] = await Promise.all([
     supabase
       .from("teams")
       .select("id, name, slot")
       .eq("status", "waiting")
       .order("created_at", { ascending: false }),
-    isMyTeamPlaying(currentPlayerId),
+    getMyPlayerStatus(currentPlayerId),
   ]);
 
   if (teamsError) {
@@ -61,6 +63,7 @@ export async function getLobbyState(): Promise<LobbyState> {
       players: [],
       // Right after Start there may be no waiting team left at all — still redirect
       isPlaying,
+      isRemoved,
     };
   }
 
@@ -92,15 +95,20 @@ export async function getLobbyState(): Promise<LobbyState> {
     team2Id: team2?.id,
     players,
     isPlaying,
+    isRemoved,
   };
 }
 
 /**
- * True when the given player's team has been started by the Master screen.
+ * isPlaying: the given player's team has been started by the Master screen.
+ * isRemoved: the player's row is gone (Reset all on the Master screen).
  * Looked up directly from the player's row, since playing teams are not part of the lobby list.
+ * A failed request counts as neither — a flaky network must not kick players out.
  */
-async function isMyTeamPlaying(playerId: string | null): Promise<boolean> {
-  if (!playerId) return false;
+async function getMyPlayerStatus(
+  playerId: string | null
+): Promise<{ isPlaying: boolean; isRemoved: boolean }> {
+  if (!playerId) return { isPlaying: false, isRemoved: false };
   const supabase = createClient();
 
   const { data: player, error: playerError } = await supabase
@@ -110,9 +118,10 @@ async function isMyTeamPlaying(playerId: string | null): Promise<boolean> {
     .maybeSingle();
 
   if (playerError) {
-    console.error("[isMyTeamPlaying] Error fetching player:", playerError.message);
+    console.error("[getMyPlayerStatus] Error fetching player:", playerError.message);
+    return { isPlaying: false, isRemoved: false };
   }
-  if (!player) return false;
+  if (!player) return { isPlaying: false, isRemoved: true };
 
   const { data: team, error: teamError } = await supabase
     .from("teams")
@@ -121,9 +130,9 @@ async function isMyTeamPlaying(playerId: string | null): Promise<boolean> {
     .maybeSingle();
 
   if (teamError) {
-    console.error("[isMyTeamPlaying] Error fetching team:", teamError.message);
+    console.error("[getMyPlayerStatus] Error fetching team:", teamError.message);
   }
-  return team?.status === "playing";
+  return { isPlaying: team?.status === "playing", isRemoved: false };
 }
 
 /**
