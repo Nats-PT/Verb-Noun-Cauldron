@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import type { Word } from "@/lib/game/types";
+import { pixelFrame } from "@/lib/pixel-frame";
 import WordCard from "./WordCard";
 
 type WordColumnProps = {
@@ -57,6 +58,9 @@ function useSlideOnReorder(ids: string[]) {
   return ref;
 }
 
+// ลายขอบของ art หนา 2px ขยาย ×2 แต่ขอบที่ใช้จัด layout คง 2px เท่ากรอบ CSS เดิม ตำแหน่งการ์ดจึงไม่ขยับ
+const columnFrame = pixelFrame("/battle/frame-zone.png", { slice: 3, scale: 2, borderWidth: 2 });
+
 export default function WordColumn({ label, words, heldId, locked }: WordColumnProps) {
   const ref = useSlideOnReorder(words.map((w) => w.id));
 
@@ -66,9 +70,9 @@ export default function WordColumn({ label, words, heldId, locked }: WordColumnP
       aria-label={label}
       // กรอบหุ้มการ์ดพอดี (self-start = สูงเท่าการ์ด ไม่ยืดถึงล่างจอ)
       // แต่ไม่เกินพื้นที่ที่มี (max-h-full) — จอเตี้ยการ์ดจะหดลงเองแทน (ดู WordCard)
-      // พื้นชมพูโปร่ง 10% / ขอบ 90% ตาม design — มองทะลุเห็นหม้อที่อยู่ข้างหลัง
-      // (บนพื้นหลังปกติจะออกมาเป็นสีเดียวกับ bg-surface พอดี)
-      className="flex max-h-full min-h-0 flex-col gap-2 self-start rounded-xl border-2 border-primary/90 bg-primary/10 p-2"
+      // กรอบจาก art (frame-zone) พื้นชมพูโปร่งแสง — มองทะลุเห็นหม้อที่อยู่ข้างหลัง
+      style={columnFrame}
+      className="flex max-h-full min-h-0 flex-col gap-2 self-start p-2 [image-rendering:pixelated]"
     >
       {words.map((word) => (
         <WordCard key={word.id} word={word} inPot={word.id === heldId} locked={locked} />

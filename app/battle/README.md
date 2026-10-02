@@ -40,6 +40,9 @@
 - `monsters/<id>-move.gif` ฉาก + มอนสเตอร์ยืนเฉย (120×90, 2 เฟรม) · `monsters/<id>-hit.png` ตอนรับ damage
 - `cards/card-verb.png`, `cards/card-noun.png` การ์ด 84×54 (ยืดแบบ 9-slice ใน `CardFrame.tsx`)
 - `cauldron.png` หม้อ 128×160 (ตัวหม้อจริง 115×103 อยู่ล่าง ข้างบนโปร่งใส)
+- `frame-boss.png` กรอบฉาก 120×90 (เท่าภาพฉาก วางทับใน `MonsterStage`)
+- `hp/hp-bg.png`, `hp/hp-fill.png`, `hp/hp-frame.png` แถบ HP 76×10 ซ้อน 3 ชั้น (ช่องเติมจริง x 11–73)
+- `frame-zone.png` กรอบคอลัมน์การ์ด 65×165 พื้นชมพูโปร่ง (ยืดแบบ 9-slice ด้วย `pixelFrame` ใน `lib/pixel-frame.ts`)
 
 ## ทดสอบ
 

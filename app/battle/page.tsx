@@ -28,21 +28,26 @@ import WordColumn from "./_components/WordColumn";
 import { useNow } from "./_hooks/useNow";
 import { useTimePassed } from "./_hooks/useTimePassed";
 
-// ระยะห่างอิงจาก Figma (frame 390×844) แต่แปลงเป็นสัดส่วน เพราะพื้นที่จริงในเบราว์เซอร์เตี้ยกว่า frame
+// ระยะห่างอิงจาก redline ของ art (Figma 390×844 = พื้นที่ใช้งาน 797 หลังหักแถบสถานะ 47)
+// แนวนอนใช้ตาม Figma ตรง ๆ (ขอบ 18) — แนวตั้ง Safari เหลือแค่ ~664 จึงบีบตามความสูงจอ:
+// ขอบล่าง 40 ที่จอ 797 → 16 ที่จอ 664 (เส้นตรงระหว่าง 2 จุดนี้)
 // - h-svh: สูงเท่าพื้นที่ตอนแถบ URL ขยายเต็ม จะไม่มีอะไรจมใต้แถบ
-// - safe area: เว้นขอบอย่างน้อย 12px หรือมากกว่านั้นถ้าเครื่องมีรอยบาก / แถบ Home
+// - safe area: ถ้าเครื่องมีรอยบาก / แถบ Home ที่กว้างกว่า ใช้ค่านั้นแทน
 const safeArea =
-  "pt-[max(12px,env(safe-area-inset-top))] pb-[max(12px,env(safe-area-inset-bottom))] " +
-  "pl-[max(12px,env(safe-area-inset-left))] pr-[max(12px,env(safe-area-inset-right))]";
+  "pt-[max(12px,env(safe-area-inset-top))] pb-[max(clamp(16px,calc(18svh_-_103px),40px),env(safe-area-inset-bottom))] " +
+  "pl-[max(18px,env(safe-area-inset-left))] pr-[max(18px,env(safe-area-inset-right))]";
 
 const FLASH_MS = 900;
 // มอนสเตอร์เป็นภาพ hit (ตัวแดง) นานเท่านี้หลังโดนตี — โดนรัว ๆ จะนับใหม่ทุกครั้ง ค้างแดงไม่กระพริบ
 const HIT_MS = 300;
 
-// ฉาก 120×90 ขยายเป็นจำนวนเต็ม: ×2 = 240×180, จอสูง (และกว้างพอ) ×3 = 360×270
-// แยกกว้าง/สูง เพราะแถวเวลาใต้ฉากใช้ความกว้างเดียวกัน (เวลาชิดขอบขวาของฉาก)
-const stageWidth = "w-[240px] [@media(min-height:800px)_and_(min-width:384px)]:w-[360px]";
-const stageHeight = "h-[180px] [@media(min-height:800px)_and_(min-width:384px)]:h-[270px]";
+// ฉาก: กว้างเต็มจอเหลือขอบ 18 (Figma 353) — สูง 265 ที่จอ 797 → 240 ที่จอ 664 (เส้นตรง) ไม่ต่ำกว่า 180
+// และไม่เกิน (จอ − 412) = สูงสุดที่การ์ดยังได้ ≥52px (วัดจริง) จอเตี้ยกว่า 664 ฉากจึงหดเร็วขึ้นแทนการ์ด
+// จอเตี้ยฉากจะเตี้ยลงแต่ยังกว้างเต็ม: ภาพขยายเต็มความกว้างแล้วตัดส่วนบน (ป่า) ออกแทน (ดู MonsterStage)
+// แต่ตัดได้ไม่เกิน 25px (เท่าที่จอ 664) — เตี้ยกว่านั้นฉากแคบลงตามสัดส่วน 4:3 แทน หัวมอนสเตอร์ตัวสูง (Dragon) จะไม่หาย
+const sceneSize =
+  "[--scene-h:clamp(180px,min(calc(18.8svh_+_115px),calc(100svh_-_412px)),265px)] " +
+  "mx-auto h-[var(--scene-h)] w-[min(100%,calc((var(--scene-h)_+_25px)*4/3))]";
 
 export default function BattlePage() {
   const [team, setTeam] = useState<BattleTeam | null>(null);
@@ -59,7 +64,8 @@ export default function BattlePage() {
   const finished = useTimePassed(endsAt + FINISH_DELAY_MS);
 
   // ดึงข้อมูลทีมจาก Supabase และเทียบเวลานาฬิกากับ server
-  // ถ้าเปิดเล่นตรง ๆ (ไม่ได้เข้าห้อง lobby) จะ fallback ใช้ mock ต่อไปโดยอัตโนมัติ
+  // ถ้าเปิดเล่นตรง ๆ (ไม่ได้เข้าห้อง lobby) หรือทีมยังไม่ถูกกด Start จะ fallback ใช้ mock ต่อไปโดยอัตโนมัติ
+  // ทีมที่ยังรออยู่ (waiting) มี monster_hp = 0 และไม่มี ends_at — ถ้าเอามาใช้ มอนสเตอร์จะเริ่มด้วยเลือด 0
   useEffect(() => {
     let isMounted = true;
     async function initBattle() {
@@ -68,7 +74,7 @@ export default function BattlePage() {
           getMyBattleTeam(),
           getServerClockOffset(),
         ]);
-        if (!isMounted || !myTeam) return;
+        if (!isMounted || !myTeam || myTeam.status !== "playing") return;
 
         setTeam(myTeam);
 
@@ -249,14 +255,11 @@ export default function BattlePage() {
       }}
     >
       <main className={`mx-auto flex h-svh w-full max-w-md flex-col gap-2 ${safeArea}`}>
-        <div className="px-[5%]">
-          <BattleHeader score={battle.score} correct={battle.correct} wrong={battle.wrong} />
-        </div>
+        <BattleHeader score={battle.score} correct={battle.correct} wrong={battle.wrong} />
 
-        {/* ขนาดฉากเป็นจำนวนเต็มเท่าของภาพ (stageWidth/Height) pixel art จะได้คม
-            กล่อง relative ครอบไว้ให้ป้าย TIME'S UP วางทับฉากได้ โดยไม่ต้องแก้ MonsterStage (จอ master ใช้ร่วม)
-            กรอบชมพูตาม design ใช้ ring (วาดทับขอบนอก) ขนาดฉากและตำแหน่งของอย่างอื่นจึงไม่ขยับ */}
-        <div className={`relative mx-auto shrink-0 rounded-lg ring-[3px] ring-primary ${stageWidth} ${stageHeight}`}>
+        {/* กล่อง relative ครอบไว้ให้ป้าย TIME'S UP วางทับฉากได้ โดยไม่ต้องแก้ MonsterStage (จอ master ใช้ร่วม)
+            กรอบชมพูมากับ MonsterStage */}
+        <div className={`relative shrink-0 ${sceneSize}`}>
           <MonsterStage
             monster={monster}
             hp={battle.monsterHp}
@@ -278,7 +281,7 @@ export default function BattlePage() {
         <Cauldron heldWord={held} locked={timeUp} onReturnWord={() => setBattle((b) => ({ ...b, held: null }))}>
           {/* บรรทัดเดียวใต้ฉาก: ข้อความผสมคำกลางจอ + เวลาชิดขวา — ประหยัดที่ หม้อกับการ์ดเลื่อนขึ้นได้
               3 ช่อง: ช่องซ้ายว่างไว้ถ่วงให้ข้อความอยู่กลางจอพอดี */}
-          <div className="grid w-full grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-[5%]">
+          <div className="grid w-full grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2">
             <span aria-hidden />
             <ComboLabel heldWord={held} flash={flash} />
             <div className="justify-self-end">
@@ -287,8 +290,8 @@ export default function BattlePage() {
           </div>
         </Cauldron>
 
-        {/* Figma: ขอบซ้ายขวา 36px ช่องกลาง 42px — z-10 ทับครึ่งล่างของหม้อ (ช่องกลางเห็นขาหม้อ) */}
-        <div className="relative z-10 grid min-h-0 flex-1 grid-cols-2 gap-x-[11%] px-[6%]">
+        {/* Figma: ขอบซ้ายขวา 18px (มาจาก main) ช่องกลาง 83px — z-10 ทับครึ่งล่างของหม้อ (ช่องกลางเห็นขาหม้อ) */}
+        <div className="relative z-10 grid min-h-0 flex-1 grid-cols-2 gap-x-[83px]">
           <WordColumn label="Verbs" words={battle.verbs} heldId={heldId} locked={timeUp} />
           <WordColumn label="Nouns" words={battle.nouns} heldId={heldId} locked={timeUp} />
         </div>
