@@ -52,6 +52,14 @@ export function startableTeamIds(state: MasterState): number[] {
     .map((team) => team.id);
 }
 
+// ทีมที่กด Cancel match แล้วจะโดนหยุด — เฉพาะแมตช์ที่ยังไม่หมดเวลา
+// หลังหมดเวลามือถือกำลังบันทึกผลลง leaderboard อยู่ ไม่ให้ยกเลิกแล้ว (จะชนกับการบันทึก)
+export function cancellableTeamIds(state: MasterState, now: number): number[] {
+  return state.lastMatch
+    .filter((team) => team.status === "playing" && team.endsAt !== null && now < team.endsAt)
+    .map((team) => team.id);
+}
+
 type TeamRow = {
   id: number;
   name: string;
@@ -147,6 +155,66 @@ export async function forceStart(state: MasterState): Promise<string | null> {
 
   const result = await startMatch(ids);
   return result.success ? null : (result.error ?? "Failed to start the match");
+}
+
+// Cancel / Reset ทำผ่านตารางตรง ๆ ไม่มี RPC — ใช้ได้เพราะ RLS ตอนนี้เปิดให้ update teams / delete players
+// ถ้าวันหนึ่งปิด RLS สองฟังก์ชันนี้จะพัง ต้องย้ายไปเป็น RPC
+//
+// ทีมที่โดนหยุดตั้ง ends_at = null:
+// - มือถือใช้แยก "โดนยกเลิก" ออกจาก "จบปกติ" (จบปกติ ends_at ยังอยู่)
+// - getMasterState ไม่นับเป็นแมตช์ล่าสุดอีก จอ master เลยกลับไป prepare / leaderboard เอง
+// ทำทีมก่อนลบคน: record_hit หยุดรับหมัดทันที และมือถือได้ event ของทีมก่อนแถวตัวเองหาย
+
+// หยุดแมตช์ที่กำลังเล่น → ผู้เล่นทีมนั้นเด้งไป login ไม่บันทึกลง leaderboard — ทีมที่ต่อคิวอยู่ไม่โดน
+// กดซ้ำได้ถ้าครั้งแรกพังกลางทาง
+export async function cancelMatch(state: MasterState, now: number): Promise<string | null> {
+  const ids = cancellableTeamIds(state, now);
+  if (ids.length === 0) return "No match to cancel";
+
+  const supabase = createClient();
+
+  // .select() คืนแถวที่แก้ได้จริง — ถ้า RLS ไม่ยอม Supabase จะแก้ 0 แถวเงียบ ๆ ไม่มี error
+  const { data: stopped, error: teamsError } = await supabase
+    .from("teams")
+    .update({ status: "finished", ends_at: null })
+    .in("id", ids)
+    .select("id");
+  if (teamsError || !stopped?.length) {
+    console.error("[cancelMatch] teams:", teamsError?.message ?? "no rows updated (RLS?)");
+    return "Failed to stop the match";
+  }
+
+  const { error: playersError } = await supabase.from("players").delete().in("team_id", ids);
+  if (playersError) {
+    console.error("[cancelMatch] players:", playersError.message);
+    return "Match stopped, but failed to remove players — try again";
+  }
+
+  return null;
+}
+
+// ล้างทุกอย่าง: ทีมที่รอ/กำลังเล่นปิดหมด + ลบผู้เล่นทุกคน (รวมคนที่ค้างหน้าผลรอบก่อน) → ทุกเครื่องกลับ login
+// leaderboard ไม่แตะ
+export async function resetAll(): Promise<string | null> {
+  const supabase = createClient();
+
+  const { error: teamsError } = await supabase
+    .from("teams")
+    .update({ status: "finished", ends_at: null })
+    .in("status", ["waiting", "playing"]);
+  if (teamsError) {
+    console.error("[resetAll] teams:", teamsError.message);
+    return "Failed to reset teams";
+  }
+
+  // Supabase ไม่ยอมให้ delete โดยไม่มีเงื่อนไข — ใส่เงื่อนไขที่จริงทุกแถว
+  const { error: playersError } = await supabase.from("players").delete().not("id", "is", null);
+  if (playersError) {
+    console.error("[resetAll] players:", playersError.message);
+    return "Teams reset, but failed to remove players — try again";
+  }
+
+  return null;
 }
 
 // เรียก onUpdate ทุกครั้งที่ teams หรือ players เปลี่ยน — คืนฟังก์ชันยกเลิก

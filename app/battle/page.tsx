@@ -2,11 +2,12 @@
 
 import { Feedback, PointerActivationConstraints, PointerSensor } from "@dnd-kit/dom";
 import { DragDropProvider } from "@dnd-kit/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import MonsterStage from "@/components/MonsterStage";
 import {
   broadcastCombatHit,
-  getMyBattleTeam,
+  getMyMatchStatus,
   getServerClockOffset,
   recordHit,
   subscribeToBattleTeam,
@@ -57,6 +58,7 @@ export default function BattlePage() {
   // เวลาที่โดนตีล่าสุด (null = ไม่ได้โดนตีอยู่) — ค่าใหม่ทุกครั้งที่ตี effect ด้านล่างจึงเริ่มนับใหม่
   const [hitAt, setHitAt] = useState<number | null>(null);
   const now = useNow();
+  const router = useRouter();
   const matchRecordedRef = useRef(false);
 
   // หมดเวลา → ล็อกกระดาน + ป้าย TIME'S UP; อีก FINISH_DELAY_MS ต่อมา → ไปหน้าสรุป
@@ -66,15 +68,23 @@ export default function BattlePage() {
   // ดึงข้อมูลทีมจาก Supabase และเทียบเวลานาฬิกากับ server
   // ถ้าเปิดเล่นตรง ๆ (ไม่ได้เข้าห้อง lobby) หรือทีมยังไม่ถูกกด Start จะ fallback ใช้ mock ต่อไปโดยอัตโนมัติ
   // ทีมที่ยังรออยู่ (waiting) มี monster_hp = 0 และไม่มี ends_at — ถ้าเอามาใช้ มอนสเตอร์จะเริ่มด้วยเลือด 0
+  // ยกเว้นโดน Cancel / Reset ไปแล้ว (กดตอนหน้านี้ยังโหลดไม่เสร็จ หรือเครื่องโหลดหน้าใหม่ตอนตื่น) → กลับ login
+  // ไม่งั้นจะตกไปเล่น mock ต่อคนเดียวไม่รู้จบ
   useEffect(() => {
     let isMounted = true;
     async function initBattle() {
       try {
-        const [myTeam, clockOffset] = await Promise.all([
-          getMyBattleTeam(),
+        const [status, clockOffset] = await Promise.all([
+          getMyMatchStatus(),
           getServerClockOffset(),
         ]);
-        if (!isMounted || !myTeam || myTeam.status !== "playing") return;
+        if (!isMounted) return;
+        if (status.kind === "removed") {
+          router.replace("/login");
+          return;
+        }
+        if (status.kind !== "playing") return;
+        const myTeam = status.team;
 
         setTeam(myTeam);
 
@@ -100,22 +110,32 @@ export default function BattlePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [router]);
 
   // ซิงค์ HP, ด่าน, และคะแนนของทีมแบบ Realtime เมื่อเพื่อนในทีมตีโดน
+  // + staff กด Cancel match / Reset all บนจอ master → ทีมถูกตั้ง ends_at = null → กลับหน้า login
+  //   (จบเกมปกติ ends_at ยังอยู่ จึงไม่โดนเด้ง)
   useEffect(() => {
     if (!team?.id) return;
 
+    function applyTeam(updatedTeam: BattleTeam) {
+      setTeam(updatedTeam);
+      const monsterIndex = Math.max(0, Math.min(MONSTERS.length - 1, updatedTeam.currentStage - 1));
+      setBattle((b) => ({
+        ...b,
+        score: updatedTeam.score,
+        monsterIndex,
+        monsterHp: updatedTeam.monsterHp,
+      }));
+    }
+
     const unsubscribe = subscribeToBattleTeam(team.id, {
       onTeamChange: (updatedTeam) => {
-        setTeam(updatedTeam);
-        const monsterIndex = Math.max(0, Math.min(MONSTERS.length - 1, updatedTeam.currentStage - 1));
-        setBattle((b) => ({
-          ...b,
-          score: updatedTeam.score,
-          monsterIndex,
-          monsterHp: updatedTeam.monsterHp,
-        }));
+        if (updatedTeam.endsAt === null) {
+          router.replace("/login");
+          return;
+        }
+        applyTeam(updatedTeam);
       },
       onCombatHit: () => {
         // เพื่อนร่วมทีมตีโดน → มอนสเตอร์ขึ้นภาพ hit (ตัวแดง) ชั่วขณะ
@@ -123,20 +143,44 @@ export default function BattlePage() {
       },
     });
 
+    // พับจอ / สลับแอปแล้ว realtime ไม่ส่ง event ที่พลาดไปย้อนหลัง → เปิดจอกลับมาถาม DB ใหม่
+    // โดน Cancel ระหว่างนั้น → กลับหน้า login, ยังเล่นอยู่ → อัปเดต HP / คะแนนที่พลาดไป
+    async function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      const status = await getMyMatchStatus();
+      if (status.kind === "removed") router.replace("/login");
+      else if (status.kind === "playing") applyTeam(status.team);
+    }
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [team?.id]);
+  }, [team?.id, router]);
 
   // เมื่อหมดเวลา + 3 วิ บันทึกคะแนนเข้า leaderboard ผ่าน atomic RPC
+  // ถาม DB ก่อน: record_match_result ไม่เช็คว่าทีมยังเล่นอยู่ไหม — มือถือที่พับจอไว้ตอนโดน Cancel
+  // จะตื่นมาบันทึกทีมที่ยกเลิกไปแล้วลง leaderboard (เน็ตพังจนถามไม่ได้ = บันทึกตามเดิม)
   useEffect(() => {
     if (finished && team?.id && !matchRecordedRef.current) {
       matchRecordedRef.current = true;
-      recordMatchResult({ teamId: team.id }).catch((err) => {
-        console.error("[BattlePage] Failed to record match result:", err);
-      });
+      const teamId = team.id;
+      getMyMatchStatus()
+        .then((status) => {
+          if (status.kind === "removed") {
+            router.replace("/login");
+            return;
+          }
+          // finished = เพื่อนร่วมทีมบันทึกไปแล้ว
+          if (status.kind === "finished") return;
+          return recordMatchResult({ teamId });
+        })
+        .catch((err) => {
+          console.error("[BattlePage] Failed to record match result:", err);
+        });
     }
-  }, [finished, team?.id]);
+  }, [finished, team?.id, router]);
 
   // ผลการผสมโชว์แป๊บเดียว แล้วกลับไปแสดงคำในหม้อตามปกติ
   useEffect(() => {
