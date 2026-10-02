@@ -1,7 +1,15 @@
 // ทดสอบกฎเลือกจอของ master — รันด้วย `npm test`
 import { describe, expect, it } from "vitest";
 import { FINISH_DELAY_MS } from "./game/rules";
-import { cancellableTeamIds, pickView, startableTeamIds, WINNER_SHOW_MS, type MasterState, type MasterTeam } from "./master";
+import {
+  addHit,
+  cancellableTeamIds,
+  pickView,
+  setFinalScore,
+  startableTeamIds,
+  topPlayers,
+  WINNER_SHOW_MS,
+  type PlayerScores, type MasterState, type MasterTeam } from "./master";
 import type { TeamId } from "./types";
 
 function team(id: number, slot: TeamId, playerCount: number, endsAt: number | null = null): MasterTeam {
@@ -78,5 +86,56 @@ describe("ทีมที่โดนหยุดตอนกด Cancel match", 
     const finished = { ...team(1, 1, 3, endsAt), status: "finished" as const };
     expect(cancellableTeamIds({ ...empty, lastMatch: [finished, team(2, 2, 2, endsAt)] }, 0)).toEqual([2]);
     expect(cancellableTeamIds(empty, 0)).toEqual([]);
+  });
+});
+
+describe("MVP: คะแนนรายคน", () => {
+  const hit = (playerId: string, points: number) => ({ playerId, playerName: playerId, points, verb: "eat", noun: "rice", damage: points });
+
+  it("หมัดรวมเป็นยอดสำรอง แล้วคะแนนสุดท้ายจากมือถือมาแทน — ส่งซ้ำไม่นับเบิ้ล และหมัดที่มาทีหลังไม่บวกต่อ", () => {
+    let scores: PlayerScores = {};
+    scores = addHit(scores, 1, hit("ann", 40));
+    scores = addHit(scores, 1, hit("ann", 35));
+    expect(scores.ann).toMatchObject({ score: 75, final: false, teamId: 1 });
+
+    const final = { playerId: "ann", playerName: "Ann", score: 100 };
+    scores = setFinalScore(scores, 1, final);
+    scores = setFinalScore(scores, 1, final);
+    scores = addHit(scores, 1, hit("ann", 50));
+    expect(scores.ann).toMatchObject({ name: "Ann", score: 100, final: true });
+  });
+
+  it("หมัดจากมือถือรุ่นเก่าที่ไม่มี playerId ไม่นับ", () => {
+    expect(addHit({}, 1, { playerName: "Team", verb: "eat", noun: "rice", damage: 30 })).toEqual({});
+  });
+
+  function scoresOf(list: [string, number][]): PlayerScores {
+    return Object.fromEntries(
+      list.map(([name, score]) => [name, { playerId: name, name, teamId: 1, score, final: true }]),
+    );
+  }
+  const ranks = (s: PlayerScores) => topPlayers(s).map((p) => [p.name, p.rank]);
+
+  it("เรียงคะแนนมากไปน้อย เอา 3 อันดับ คนที่ยังไม่ได้คะแนนไม่นับ", () => {
+    expect(ranks(scoresOf([["a", 50], ["b", 90], ["c", 0], ["d", 70], ["e", 10]]))).toEqual([
+      ["b", 1],
+      ["d", 2],
+      ["a", 3],
+    ]);
+    expect(ranks(scoresOf([["a", 0]]))).toEqual([]);
+  });
+
+  it("คะแนนเท่ากันได้อันดับร่วม และเท่ากันที่อันดับ 3 โชว์ทุกคน", () => {
+    expect(ranks(scoresOf([["a", 100], ["b", 90], ["c", 90], ["d", 80]]))).toEqual([
+      ["a", 1],
+      ["b", 2],
+      ["c", 2],
+    ]);
+    expect(ranks(scoresOf([["a", 100], ["b", 90], ["c", 80], ["d", 80], ["e", 70]]))).toEqual([
+      ["a", 1],
+      ["b", 2],
+      ["c", 3],
+      ["d", 3],
+    ]);
   });
 });

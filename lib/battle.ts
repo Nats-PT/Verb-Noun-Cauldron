@@ -26,6 +26,17 @@ export type CombatBroadcast = {
   noun: string;
   damage: number;
   weak?: boolean;
+  // MVP on the master screen: who hit, and their personal points for this hit (damage + MVP kill bonus)
+  playerId?: string;
+  points?: number;
+};
+
+// Sent by each phone at TIME'S UP — its own total, counted on the phone only (never stored in the DB).
+// The master screen ranks these into the MVP top 3.
+export type PlayerScoreBroadcast = {
+  playerId: string;
+  playerName: string;
+  score: number;
 };
 
 type DbTeamRow = {
@@ -87,7 +98,7 @@ export async function getMyBattleTeam(): Promise<BattleTeam | null> {
 }
 
 export type MyMatchStatus =
-  | { kind: "playing"; team: BattleTeam }
+  | { kind: "playing"; team: BattleTeam; me: { id: string; name: string } }
   | { kind: "waiting" } // still in the lobby (not started yet)
   | { kind: "finished" } // ended normally (a teammate already recorded the result)
   | { kind: "removed" } // staff pressed Cancel match / Reset all on the master screen
@@ -111,7 +122,7 @@ export async function getMyMatchStatus(): Promise<MyMatchStatus> {
 
   const { data: player, error: playerError } = await supabase
     .from("players")
-    .select("team_id")
+    .select("team_id, name")
     .eq("id", user.id)
     .maybeSingle();
   if (playerError) return { kind: "unknown" };
@@ -125,7 +136,9 @@ export async function getMyMatchStatus(): Promise<MyMatchStatus> {
   if (teamError) return { kind: "unknown" };
   if (!team) return { kind: "removed" };
 
-  if (team.status === "playing") return { kind: "playing", team: mapTeam(team as DbTeamRow) };
+  if (team.status === "playing") {
+    return { kind: "playing", team: mapTeam(team as DbTeamRow), me: { id: user.id, name: player.name } };
+  }
   if (team.status === "waiting") return { kind: "waiting" };
   return team.ends_at === null ? { kind: "removed" } : { kind: "finished" };
 }
@@ -213,6 +226,21 @@ export async function broadcastCombatHit(
     type: "broadcast",
     event: "combat_hit",
     payload: hit,
+  });
+}
+
+/**
+ * Broadcasts this phone's final personal score at TIME'S UP (sent a few times in case one is lost).
+ * Uses the same team channel as combat hits; the master screen listens on both teams' channels.
+ */
+export async function broadcastPlayerScore(teamId: number, score: PlayerScoreBroadcast): Promise<void> {
+  const supabase = createClient();
+  const channel = supabase.channel(`team:${teamId}:battle`);
+
+  await channel.send({
+    type: "broadcast",
+    event: "player_score",
+    payload: score,
   });
 }
 

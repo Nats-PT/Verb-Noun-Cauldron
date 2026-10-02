@@ -1,7 +1,9 @@
 import { CheckIcon, CrossIcon } from "./BattleHeader";
 
 type TimeUpBannerProps = {
-  score: number;
+  teamScore: number;
+  // คะแนนที่เครื่องนี้ตีได้เอง (damage + โบนัสล้มส่วนตัว) — ตัวเดียวกับที่ส่งให้จอ master จัด MVP
+  myScore: number;
   correct: number;
   wrong: number;
   // นับถอยหลังไปหน้าสรุป (วินาที) — null = นับครบแล้ว รอหน้าสรุป
@@ -10,7 +12,7 @@ type TimeUpBannerProps = {
 
 // ป้ายทับฉากมอนสเตอร์ตอนหมดเวลา — วางใน element ที่เป็น relative (ขนาดเท่าฉาก)
 // คะแนนรายคนโชว์ตรงนี้ เพราะ DB เก็บแค่คะแนนรวมทีม ตัวเลขนี้มีอยู่แค่ในมือถือเครื่องนี้
-export default function TimeUpBanner({ score, correct, wrong, secondsLeft }: TimeUpBannerProps) {
+export default function TimeUpBanner({ teamScore, myScore, correct, wrong, secondsLeft }: TimeUpBannerProps) {
   return (
     <div
       role="status"
@@ -20,8 +22,10 @@ export default function TimeUpBanner({ score, correct, wrong, secondsLeft }: Tim
     >
       <p className="text-head2 text-foreground">TIME&apos;S UP!</p>
 
+      <p className="text-body text-accent">you {myScore}</p>
+
       <div className="flex items-center gap-3 text-score">
-        <span>score {score}</span>
+        <span>team {teamScore}</span>
         <span className="flex items-center gap-1" aria-label={`${correct} correct`}>
           <CheckIcon />
           {correct}

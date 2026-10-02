@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import MonsterStage from "@/components/MonsterStage";
 import {
   broadcastCombatHit,
+  broadcastPlayerScore,
   getMyMatchStatus,
   getServerClockOffset,
   recordHit,
@@ -17,6 +18,7 @@ import { resolveDrop, swapCards } from "@/lib/game/engine";
 import { createMockBattle, createMockEndsAt } from "@/lib/game/mock-battle";
 import { MONSTERS, monsterMaxHp } from "@/lib/game/monsters";
 import { elapsedMs, FINISH_DELAY_MS, isTimeUp } from "@/lib/game/rules";
+import { personalPoints } from "@/lib/game/scoring";
 import type { Word } from "@/lib/game/types";
 import { WORD_PAIRS, WORD_POOL } from "@/lib/game/words";
 import { recordMatchResult } from "@/lib/leaderboard";
@@ -57,6 +59,12 @@ export default function BattlePage() {
   const [flash, setFlash] = useState<ComboFlash | null>(null);
   // เวลาที่โดนตีล่าสุด (null = ไม่ได้โดนตีอยู่) — ค่าใหม่ทุกครั้งที่ตี effect ด้านล่างจึงเริ่มนับใหม่
   const [hitAt, setHitAt] = useState<number | null>(null);
+  // ตัวเราเอง (null = โหมด mock) — ใส่ชื่อ/id ใน broadcast ให้จอ master จัดอันดับ MVP
+  const [me, setMe] = useState<{ id: string; name: string } | null>(null);
+  // คะแนนรายคน: นับในเครื่องนี้เท่านั้น ไม่ลง DB (battle.score เป็นคะแนนทีมที่ realtime เขียนทับ)
+  // ref ไว้ส่งตอนหมดเวลา, state ไว้แสดงบนป้าย TIME'S UP
+  const [myScore, setMyScore] = useState(0);
+  const myScoreRef = useRef(0);
   const now = useNow();
   const router = useRouter();
   const matchRecordedRef = useRef(false);
@@ -85,6 +93,7 @@ export default function BattlePage() {
         }
         if (status.kind !== "playing") return;
         const myTeam = status.team;
+        setMe(status.me);
 
         setTeam(myTeam);
 
@@ -182,6 +191,20 @@ export default function BattlePage() {
     }
   }, [finished, team?.id, router]);
 
+  // หมดเวลา → ส่งคะแนนรายคนให้จอ master จัด MVP — ส่ง 3 ครั้ง (0, 1, 2 วิ) เผื่อหลุด ช่วงป้าย TIME'S UP พอดี
+  // broadcast ไม่รับประกันว่าถึง และไม่เก็บย้อนหลัง จอ master เอาค่าล่าสุดของแต่ละคน ส่งซ้ำจึงไม่นับเบิ้ล
+  useEffect(() => {
+    if (!timeUp || !team?.id || !me) return;
+    const teamId = team.id;
+    const send = () =>
+      broadcastPlayerScore(teamId, { playerId: me.id, playerName: me.name, score: myScoreRef.current }).catch((err) =>
+        console.error("[broadcastPlayerScore]", err),
+      );
+    send();
+    const timers = [setTimeout(send, 1000), setTimeout(send, 2000)];
+    return () => timers.forEach(clearTimeout);
+  }, [timeUp, team?.id, me]);
+
   // ผลการผสมโชว์แป๊บเดียว แล้วกลับไปแสดงคำในหม้อตามปกติ
   useEffect(() => {
     if (!flash) return;
@@ -226,10 +249,17 @@ export default function BattlePage() {
       // หมัดที่ล้มมอนสเตอร์ไม่โชว์ภาพ hit ด้วยเหตุผลเดียวกัน — ตัวใหม่โผล่มาในท่ายืนปกติ
       setHitAt(outcome.kills === 0 ? Date.now() : null);
 
+      const points = personalPoints(outcome.damage, outcome.kills);
+      myScoreRef.current += points;
+      setMyScore(myScoreRef.current);
+
       // ส่งผลการตีขึ้น Realtime Broadcast (~20ms) และบันทึกลง Database RPC
+      // points ไว้ให้จอ master รวมเป็นคะแนนรายคนสำรอง เผื่อเครื่องนี้ปิดไปก่อนส่งคะแนนสุดท้าย
       if (team?.id) {
         broadcastCombatHit(team.id, {
-          playerName: team.name,
+          playerName: me?.name ?? team.name,
+          playerId: me?.id,
+          points,
           verb: outcome.verb.text,
           noun: outcome.noun.text,
           damage: outcome.damage,
@@ -314,7 +344,8 @@ export default function BattlePage() {
           />
           {timeUp && (
             <TimeUpBanner
-              score={battle.score}
+              teamScore={battle.score}
+              myScore={myScore}
               correct={battle.correct}
               wrong={battle.wrong}
               secondsLeft={secondsLeft}

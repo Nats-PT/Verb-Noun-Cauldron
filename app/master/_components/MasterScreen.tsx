@@ -4,20 +4,26 @@ import { useEffect, useState } from "react";
 import { useNow } from "@/app/battle/_hooks/useNow";
 import { getServerClockOffset } from "@/lib/battle";
 import {
+  addHit,
   cancellableTeamIds,
   cancelMatch,
   forceStart,
   getMasterState,
   pickView,
   resetAll,
+  setFinalScore,
   startableTeamIds,
   subscribeToMaster,
+  subscribeToPlayerScores,
+  topPlayers,
   type MasterState,
   type MasterTeam,
   type MasterView,
+  type PlayerScores,
 } from "@/lib/master";
 import ConfirmDialog from "./ConfirmDialog";
 import PrepareScreen from "./PrepareScreen";
+import WinnerScreen from "./WinnerScreen";
 
 type Dialog = "cancel" | "reset" | null;
 
@@ -84,6 +90,23 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
     };
   }, []);
 
+  // คะแนนรายคน (MVP) ของแมตช์ล่าสุด จาก broadcast ของมือถือ — ฟังตั้งแต่เริ่มแมตช์ เพื่อเก็บทุกหมัดไว้สำรอง
+  // ผูกกับ matchKey: เริ่มแมตช์ใหม่ = ชุดใหม่ ของแมตช์เก่าถูกทิ้งเอง (ไม่ต้อง setState ใน effect เพื่อล้าง)
+  const matchKey = state?.lastMatch.map((team) => `${team.id}@${team.endsAt}`).join(",") ?? "";
+  const [scores, setScores] = useState<{ key: string; byPlayer: PlayerScores }>({ key: "", byPlayer: {} });
+
+  useEffect(() => {
+    if (!matchKey) return;
+    const teamIds = matchKey.split(",").map((part) => Number(part.split("@")[0]));
+    const update = (change: (byPlayer: PlayerScores) => PlayerScores) =>
+      setScores((prev) => ({ key: matchKey, byPlayer: change(prev.key === matchKey ? prev.byPlayer : {}) }));
+
+    return subscribeToPlayerScores(teamIds, {
+      onHit: (teamId, hit) => update((byPlayer) => addHit(byPlayer, teamId, hit)),
+      onFinal: (teamId, final) => update((byPlayer) => setFinalScore(byPlayer, teamId, final)),
+    });
+  }, [matchKey]);
+
   if (!state || now === null) {
     return <p className="grid h-full place-items-center text-head2 text-muted">Loading...</p>;
   }
@@ -104,9 +127,16 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
         />
       );
       break;
-    // TODO: ทำทีละ branch — feature/master-battle, master-winner, master-leaderboard
-    case "battle":
     case "winner":
+      screen = (
+        <WinnerScreen
+          teams={state.lastMatch}
+          mvps={topPlayers(scores.key === matchKey ? scores.byPlayer : {})}
+        />
+      );
+      break;
+    // TODO: ทำทีละ branch — feature/master-battle, master-leaderboard
+    case "battle":
     case "leaderboard":
       screen = (
         <ComingSoon

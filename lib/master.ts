@@ -1,4 +1,4 @@
-import { startMatch } from "./battle";
+import { startMatch, type CombatBroadcast, type PlayerScoreBroadcast } from "./battle";
 import { FINISH_DELAY_MS } from "./game/rules";
 import { createClient } from "./supabase/client";
 import type { Player, TeamId } from "./types";
@@ -236,5 +236,82 @@ export function subscribeToMaster(onUpdate: () => void): () => void {
 
   return () => {
     supabase.removeChannel(channel);
+  };
+}
+
+// ---------- MVP: คะแนนรายคนของแมตช์ล่าสุด ----------
+// ไม่อยู่ใน DB — มือถือแต่ละเครื่องนับเองแล้ว broadcast มา (lib/battle.ts) จอ master เก็บไว้ในหน่วยความจำ
+// รีเฟรชจอ master กลางแมตช์ → ยอดสำรองจากหมัดหาย แต่คะแนนสุดท้ายตอน TIME'S UP ยังมาครบ
+
+export type PlayerScore = {
+  playerId: string;
+  name: string;
+  teamId: number;
+  score: number;
+  // true = ค่าสุดท้ายจากมือถือเครื่องนั้นเอง (เชื่อได้), false = ยอดที่จอ master รวมจากหมัดเอง (สำรอง)
+  final: boolean;
+};
+export type PlayerScores = Record<string, PlayerScore>;
+
+// ทุกหมัด: บวกเข้ายอดสำรอง เผื่อมือถือปิดไปก่อนส่งคะแนนสุดท้าย — ได้ค่าสุดท้ายแล้วไม่บวกต่อ
+export function addHit(scores: PlayerScores, teamId: number, hit: CombatBroadcast): PlayerScores {
+  if (!hit.playerId || hit.points === undefined) return scores;
+  const prev = scores[hit.playerId];
+  if (prev?.final) return scores;
+  return {
+    ...scores,
+    [hit.playerId]: {
+      playerId: hit.playerId,
+      name: hit.playerName,
+      teamId,
+      score: (prev?.score ?? 0) + hit.points,
+      final: false,
+    },
+  };
+}
+
+// คะแนนสุดท้ายจากมือถือ = ค่าจริง แทนยอดสำรอง (มือถือส่งซ้ำ 3 ครั้ง ได้ค่าเดิม ไม่นับเบิ้ล)
+export function setFinalScore(scores: PlayerScores, teamId: number, final: PlayerScoreBroadcast): PlayerScores {
+  return {
+    ...scores,
+    [final.playerId]: { playerId: final.playerId, name: final.playerName, teamId, score: final.score, final: true },
+  };
+}
+
+export type RankedPlayer = PlayerScore & { rank: number };
+
+// top n แบบอันดับร่วม: 100, 90, 90, 80 → อันดับ 1, 2, 2, 4
+// คนที่คะแนนเท่ากับอันดับ n โชว์ทุกคน (เลยอาจเกิน n คน) — คนที่ยังไม่ได้คะแนนไม่นับ
+export function topPlayers(scores: PlayerScores, n = 3): RankedPlayer[] {
+  const sorted = Object.values(scores)
+    .filter((p) => p.score > 0)
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  return sorted
+    .map((p) => ({ ...p, rank: sorted.findIndex((q) => q.score === p.score) + 1 }))
+    .filter((p) => p.rank <= n);
+}
+
+// ฟังหมัด + คะแนนสุดท้ายของทุกทีมในแมตช์ — channel เดียวกับที่มือถือใช้ (team:<id>:battle) — คืนฟังก์ชันยกเลิก
+export function subscribeToPlayerScores(
+  teamIds: number[],
+  handlers: {
+    onHit: (teamId: number, hit: CombatBroadcast) => void;
+    onFinal: (teamId: number, final: PlayerScoreBroadcast) => void;
+  },
+): () => void {
+  const supabase = createClient();
+
+  const channels = teamIds.map((teamId) =>
+    supabase
+      .channel(`team:${teamId}:battle`)
+      .on("broadcast", { event: "combat_hit" }, ({ payload }) => handlers.onHit(teamId, payload as CombatBroadcast))
+      .on("broadcast", { event: "player_score" }, ({ payload }) =>
+        handlers.onFinal(teamId, payload as PlayerScoreBroadcast),
+      )
+      .subscribe(),
+  );
+
+  return () => {
+    channels.forEach((channel) => supabase.removeChannel(channel));
   };
 }
