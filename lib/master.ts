@@ -12,6 +12,9 @@ export type MasterTeam = {
   status: "waiting" | "playing" | "finished";
   score: number;
   currentStage: number;
+  monsterHp: number;
+  // จำนวนคนตอนกด Start — HP เต็มของมอนสเตอร์คิดจากค่านี้ (monsterMaxHp) ไม่ใช่จำนวนคนที่เหลืออยู่ตอนนี้
+  teamSize: number;
   endsAt: number | null; // ms — null = ยังไม่เคยเริ่ม
   players: Player[];
 };
@@ -67,6 +70,8 @@ type TeamRow = {
   status: MasterTeam["status"];
   score: number;
   current_stage: number;
+  monster_hp: number;
+  team_size: number;
   ends_at: string | null;
 };
 
@@ -77,7 +82,7 @@ type PlayerRow = {
   is_ready: boolean;
 };
 
-const TEAM_COLUMNS ="id, name, slot, status, score, current_stage, ends_at";
+const TEAM_COLUMNS = "id, name, slot, status, score, current_stage, monster_hp, team_size, ends_at";
 
 export async function getMasterState(): Promise<MasterState> {
   const supabase = createClient();
@@ -131,6 +136,8 @@ export async function getMasterState(): Promise<MasterState> {
       status: row.status,
       score: row.score,
       currentStage: row.current_stage,
+      monsterHp: row.monster_hp,
+      teamSize: row.team_size,
       endsAt: row.ends_at ? new Date(row.ends_at).getTime() : null,
       players: playerRows
         .filter((p) => p.team_id === row.id)
@@ -239,6 +246,71 @@ export function subscribeToMaster(onUpdate: () => void): () => void {
   };
 }
 
+// ---------- จอ battle: หมัดล่าสุด + อันดับในทีม ----------
+// หมัดมาจาก broadcast combat_hit เหมือน MVP — ไม่อยู่ใน DB รีเฟรชจอกลางแมตช์แล้วเริ่มนับใหม่จากหมัดถัดไป
+
+export type LastHit = {
+  // ผู้เรียกนับเลขเอง ไม่ซ้ำกันทุกหมัด — ใช้จุดภาพ hit / วลีบนแถว (คนเดิมทำคำเดิมได้ damage เท่าเดิมได้ เลยใช้ข้อมูลหมัดแทนไม่ได้)
+  key: number;
+  verb: string;
+  noun: string;
+  damage: number;
+  weak: boolean;
+  // หมัดนี้ล้มมอนสเตอร์ — ฉากไม่โชว์ภาพ hit / weak! เพราะเปลี่ยนเป็นตัวใหม่แล้ว (เหมือนมือถือ)
+  knockout: boolean;
+};
+
+export type LastHits = {
+  // team id → หมัดล่าสุดของทีม (จุดภาพ hit บนฉาก)
+  byTeam: Record<number, LastHit>;
+  // player id → หมัดล่าสุดของคนนั้น (วลีแวบขึ้นบนแถวผู้เล่น)
+  byPlayer: Record<string, LastHit>;
+};
+
+export function addLastHit(last: LastHits, teamId: number, hit: CombatBroadcast, key: number): LastHits {
+  const entry: LastHit = {
+    key,
+    verb: hit.verb,
+    noun: hit.noun,
+    damage: hit.damage,
+    weak: hit.weak ?? false,
+    knockout: (hit.kills ?? 0) > 0,
+  };
+  return {
+    byTeam: { ...last.byTeam, [teamId]: entry },
+    // มือถือรุ่นเก่าไม่ส่ง playerId — ยังจุดฉากได้ แต่ไม่รู้ว่าเป็นแถวของใคร
+    byPlayer: hit.playerId ? { ...last.byPlayer, [hit.playerId]: entry } : last.byPlayer,
+  };
+}
+
+export type Standing = {
+  playerId: string;
+  name: string;
+  hits: number;
+  score: number;
+  // อันดับในทีมแบบอันดับร่วม (100, 90, 90 → 1, 2, 2) — null = ยังไม่ได้คะแนน
+  rank: number | null;
+};
+
+// แถวผู้เล่นของทีมบนจอ battle เรียงคะแนนมากไปน้อย
+// ชื่อจาก DB (ขึ้นครบตั้งแต่เริ่มด้วย 0) + คะแนนจาก broadcast — คะแนนเท่ากันคงลำดับเดิม (ลำดับเข้าเกม) แถวจะได้ไม่สลับไปมา
+export function teamStandings(team: MasterTeam, scores: PlayerScores): Standing[] {
+  const fromScores = (id: string) => ({ hits: scores[id]?.hits ?? 0, score: scores[id]?.score ?? 0 });
+  const rows = [
+    ...team.players.map((p) => ({ playerId: p.id, name: p.name, ...fromScores(p.id) })),
+    // คนที่มีหมัดแต่ไม่อยู่ใน DB แล้ว (แถวถูกลบกลางแมตช์) ยังโชว์ด้วยชื่อจาก broadcast
+    ...Object.values(scores)
+      .filter((s) => s.teamId === team.id && !team.players.some((p) => p.id === s.playerId))
+      .map((s) => ({ playerId: s.playerId, name: s.name, hits: s.hits, score: s.score })),
+  ];
+  // sort ของ JS คงลำดับเดิมเมื่อค่าเท่ากัน
+  const sorted = rows.sort((a, b) => b.score - a.score);
+  return sorted.map((row) => ({
+    ...row,
+    rank: row.score > 0 ? sorted.findIndex((other) => other.score === row.score) + 1 : null,
+  }));
+}
+
 // ---------- MVP: คะแนนรายคนของแมตช์ล่าสุด ----------
 // ไม่อยู่ใน DB — มือถือแต่ละเครื่องนับเองแล้ว broadcast มา (lib/battle.ts) จอ master เก็บไว้ในหน่วยความจำ
 // รีเฟรชจอ master กลางแมตช์ → ยอดสำรองจากหมัดหาย แต่คะแนนสุดท้ายตอน TIME'S UP ยังมาครบ
@@ -248,6 +320,8 @@ export type PlayerScore = {
   name: string;
   teamId: number;
   score: number;
+  // จำนวนวลีที่ทำถูก — นับจากหมัดที่จอ master ได้รับ (คะแนนสุดท้ายจากมือถือไม่มีค่านี้ จึงคงยอดที่นับไว้)
+  hits: number;
   // true = ค่าสุดท้ายจากมือถือเครื่องนั้นเอง (เชื่อได้), false = ยอดที่จอ master รวมจากหมัดเอง (สำรอง)
   final: boolean;
 };
@@ -265,6 +339,7 @@ export function addHit(scores: PlayerScores, teamId: number, hit: CombatBroadcas
       name: hit.playerName,
       teamId,
       score: (prev?.score ?? 0) + hit.points,
+      hits: (prev?.hits ?? 0) + 1,
       final: false,
     },
   };
@@ -274,7 +349,14 @@ export function addHit(scores: PlayerScores, teamId: number, hit: CombatBroadcas
 export function setFinalScore(scores: PlayerScores, teamId: number, final: PlayerScoreBroadcast): PlayerScores {
   return {
     ...scores,
-    [final.playerId]: { playerId: final.playerId, name: final.playerName, teamId, score: final.score, final: true },
+    [final.playerId]: {
+      playerId: final.playerId,
+      name: final.playerName,
+      teamId,
+      score: final.score,
+      hits: scores[final.playerId]?.hits ?? 0,
+      final: true,
+    },
   };
 }
 

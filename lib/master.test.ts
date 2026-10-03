@@ -4,9 +4,11 @@ import { FINISH_DELAY_MS } from "./game/rules";
 import {
   addHit,
   cancellableTeamIds,
+  addLastHit,
   pickView,
   setFinalScore,
   startableTeamIds,
+  teamStandings,
   topPlayers,
   WINNER_SHOW_MS,
   type PlayerScores, type MasterState, type MasterTeam } from "./master";
@@ -20,6 +22,8 @@ function team(id: number, slot: TeamId, playerCount: number, endsAt: number | nu
     status: endsAt === null ? "waiting" : "playing",
     score: 0,
     currentStage: 1,
+    monsterHp: 200 * playerCount,
+    teamSize: playerCount,
     endsAt,
     players: Array.from({ length: playerCount }, (_, i) => ({
       id: `p${id}-${i}`,
@@ -96,13 +100,14 @@ describe("MVP: คะแนนรายคน", () => {
     let scores: PlayerScores = {};
     scores = addHit(scores, 1, hit("ann", 40));
     scores = addHit(scores, 1, hit("ann", 35));
-    expect(scores.ann).toMatchObject({ score: 75, final: false, teamId: 1 });
+    expect(scores.ann).toMatchObject({ score: 75, hits: 2, final: false, teamId: 1 });
 
     const final = { playerId: "ann", playerName: "Ann", score: 100 };
     scores = setFinalScore(scores, 1, final);
     scores = setFinalScore(scores, 1, final);
     scores = addHit(scores, 1, hit("ann", 50));
-    expect(scores.ann).toMatchObject({ name: "Ann", score: 100, final: true });
+    // คะแนนสุดท้ายไม่มีจำนวนหมัด → คงยอดที่นับไว้
+    expect(scores.ann).toMatchObject({ name: "Ann", score: 100, hits: 2, final: true });
   });
 
   it("หมัดจากมือถือรุ่นเก่าที่ไม่มี playerId ไม่นับ", () => {
@@ -111,7 +116,7 @@ describe("MVP: คะแนนรายคน", () => {
 
   function scoresOf(list: [string, number][]): PlayerScores {
     return Object.fromEntries(
-      list.map(([name, score]) => [name, { playerId: name, name, teamId: 1, score, final: true }]),
+      list.map(([name, score]) => [name, { playerId: name, name, teamId: 1, score, hits: 1, final: true }]),
     );
   }
   const ranks = (s: PlayerScores) => topPlayers(s).map((p) => [p.name, p.rank]);
@@ -137,5 +142,77 @@ describe("MVP: คะแนนรายคน", () => {
       ["c", 3],
       ["d", 3],
     ]);
+  });
+});
+
+describe("จอ battle: หมัดล่าสุด", () => {
+  const empty = { byTeam: {}, byPlayer: {} };
+  const hit = (playerId: string | undefined, verb: string, weak?: boolean, kills?: number) => ({
+    playerId,
+    playerName: "Ann",
+    verb,
+    noun: "apple",
+    damage: 40,
+    weak,
+    kills,
+  });
+
+  it("หมัดใหม่ทับหมัดเก่าของทีมและของคนนั้น คนอื่น/ทีมอื่นไม่โดน", () => {
+    let last = addLastHit(empty, 1, hit("ann", "eat"), 1);
+    last = addLastHit(last, 2, hit("bob", "read"), 2);
+    last = addLastHit(last, 1, hit("ann", "cook"), 3);
+    expect(last.byTeam[1]).toMatchObject({ key: 3, verb: "cook" });
+    expect(last.byTeam[2]).toMatchObject({ key: 2, verb: "read" });
+    expect(last.byPlayer.ann).toMatchObject({ key: 3, verb: "cook" });
+    expect(last.byPlayer.bob).toMatchObject({ key: 2, verb: "read" });
+  });
+
+  it("เก็บข้อมูลที่จอต้องใช้ และ weak / kills ที่ไม่ได้ส่งมา (มือถือรุ่นเก่า) = ไม่ใช่", () => {
+    expect(addLastHit(empty, 1, hit("ann", "eat"), 1).byTeam[1]).toEqual({
+      key: 1,
+      verb: "eat",
+      noun: "apple",
+      damage: 40,
+      weak: false,
+      knockout: false,
+    });
+    expect(addLastHit(empty, 1, hit("ann", "eat", true), 1).byTeam[1].weak).toBe(true);
+    expect(addLastHit(empty, 1, hit("ann", "eat", false, 1), 1).byTeam[1].knockout).toBe(true);
+  });
+
+  it("หมัดที่ไม่มี playerId (มือถือรุ่นเก่า) ยังจุดฉากของทีม แต่ไม่ขึ้นแถวของใคร", () => {
+    const last = addLastHit(empty, 1, hit(undefined, "eat"), 1);
+    expect(last.byTeam[1].verb).toBe("eat");
+    expect(last.byPlayer).toEqual({});
+  });
+});
+
+describe("จอ battle: อันดับในทีม", () => {
+  const t = team(1, 1, 3, 1_000_000); // Player 0, 1, 2 (เข้าเกมตามลำดับ)
+  const score = (playerId: string, points: number, hits = 1, teamId = 1) => ({
+    [playerId]: { playerId, name: playerId, teamId, score: points, hits, final: false },
+  });
+
+  it("เริ่มแมตช์: ทุกคนขึ้นด้วย 0 ตามลำดับเข้าเกม ยังไม่มีอันดับ", () => {
+    expect(teamStandings(t, {}).map((r) => [r.name, r.hits, r.score, r.rank])).toEqual([
+      ["Player 0", 0, 0, null],
+      ["Player 1", 0, 0, null],
+      ["Player 2", 0, 0, null],
+    ]);
+  });
+
+  it("คะแนนมากขึ้นก่อน เท่ากันได้อันดับร่วมและคงลำดับเข้าเกม คนอื่นทีมไม่นับ", () => {
+    const scores = { ...score("p1-2", 90, 2), ...score("p1-0", 40), ...score("p1-1", 40), ...score("p2-0", 500, 9, 2) };
+    expect(teamStandings(t, scores).map((r) => [r.playerId, r.hits, r.score, r.rank])).toEqual([
+      ["p1-2", 2, 90, 1],
+      ["p1-0", 1, 40, 2],
+      ["p1-1", 1, 40, 2],
+    ]);
+  });
+
+  it("คนที่มีหมัดแต่ไม่อยู่ใน DB แล้ว ยังโชว์ด้วยชื่อจาก broadcast", () => {
+    const rows = teamStandings(t, score("ghost", 30));
+    expect(rows[0]).toMatchObject({ playerId: "ghost", name: "ghost", score: 30, rank: 1 });
+    expect(rows).toHaveLength(4);
   });
 });

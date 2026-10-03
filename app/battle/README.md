@@ -20,7 +20,7 @@
 | `_components/TimeUpBanner.tsx` | ป้าย TIME'S UP ตอนหมดเวลา |
 | `_hooks/useNow.ts` | เวลาปัจจุบัน อัปเดตทุก 1 วิ (ใช้ร่วมกันทั้งหน้า) |
 | `_hooks/useTimePassed.ts` | บอกว่าถึงเวลาที่กำหนดหรือยัง แบบตรงวินาที (ใช้ล็อกตอนหมดเวลา) |
-| `components/MonsterStage.tsx` | ฉากมอนสเตอร์ + แถบ HP — อยู่นอกโฟลเดอร์นี้เพราะจอ master ใช้ด้วย |
+| `components/MonsterStage.tsx` | ฉากมอนสเตอร์ + แถบ HP — อยู่นอกโฟลเดอร์นี้เพราะจอ master ใช้ด้วย (`scaleText` = ตัวหนังสือบนฉากขยายตามฉาก ใช้บนจอ master) |
 
 ## กติกาเกม — `lib/game/`
 

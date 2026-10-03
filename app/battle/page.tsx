@@ -264,6 +264,7 @@ export default function BattlePage() {
           noun: outcome.noun.text,
           damage: outcome.damage,
           weak: outcome.weak,
+          kills: outcome.kills,
         }).catch((err) => console.error("[broadcastCombatHit]", err));
 
         recordHit(team.id, outcome.damage).catch((err) =>

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNow } from "@/app/battle/_hooks/useNow";
 import { getServerClockOffset } from "@/lib/battle";
 import {
   addHit,
+  addLastHit,
   cancellableTeamIds,
   cancelMatch,
   forceStart,
@@ -16,11 +17,12 @@ import {
   subscribeToMaster,
   subscribeToPlayerScores,
   topPlayers,
+  type LastHits,
   type MasterState,
-  type MasterTeam,
   type MasterView,
   type PlayerScores,
 } from "@/lib/master";
+import BattleScreen from "./BattleScreen";
 import ConfirmDialog from "./ConfirmDialog";
 import PrepareScreen from "./PrepareScreen";
 import WinnerScreen from "./WinnerScreen";
@@ -94,6 +96,10 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
   // ผูกกับ matchKey: เริ่มแมตช์ใหม่ = ชุดใหม่ ของแมตช์เก่าถูกทิ้งเอง (ไม่ต้อง setState ใน effect เพื่อล้าง)
   const matchKey = state?.lastMatch.map((team) => `${team.id}@${team.endsAt}`).join(",") ?? "";
   const [scores, setScores] = useState<{ key: string; byPlayer: PlayerScores }>({ key: "", byPlayer: {} });
+  // หมัดล่าสุดของแต่ละทีม / แต่ละคนบนจอ battle — มาจาก broadcast เดียวกัน ผูกกับ matchKey แบบเดียวกัน
+  const [lastHits, setLastHits] = useState<{ key: string } & LastHits>({ key: "", byTeam: {}, byPlayer: {} });
+  // เลขประจำหมัด ไว้จุดภาพ hit บนฉาก / วลีบนแถวผู้เล่น — นับขึ้นเรื่อย ๆ ไม่ซ้ำ
+  const hitCounter = useRef(0);
 
   useEffect(() => {
     if (!matchKey) return;
@@ -102,7 +108,14 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
       setScores((prev) => ({ key: matchKey, byPlayer: change(prev.key === matchKey ? prev.byPlayer : {}) }));
 
     return subscribeToPlayerScores(teamIds, {
-      onHit: (teamId, hit) => update((byPlayer) => addHit(byPlayer, teamId, hit)),
+      onHit: (teamId, hit) => {
+        update((byPlayer) => addHit(byPlayer, teamId, hit));
+        const key = ++hitCounter.current;
+        setLastHits((prev) => ({
+          key: matchKey,
+          ...addLastHit(prev.key === matchKey ? prev : { byTeam: {}, byPlayer: {} }, teamId, hit, key),
+        }));
+      },
       onFinal: (teamId, final) => update((byPlayer) => setFinalScore(byPlayer, teamId, final)),
     });
   }, [matchKey]);
@@ -135,18 +148,21 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
         />
       );
       break;
-    // TODO: ทำทีละ branch — feature/master-battle, master-leaderboard
     case "battle":
-    case "leaderboard":
       screen = (
-        <ComingSoon
-          view={view}
-          lastMatch={state.lastMatch}
+        <BattleScreen
+          teams={state.lastMatch}
+          scores={scores.key === matchKey ? scores.byPlayer : {}}
+          lastHits={lastHits.key === matchKey ? lastHits : { byTeam: {}, byPlayer: {} }}
           serverNow={serverNow}
           canCancel={canCancel}
           onCancel={() => setDialog("cancel")}
         />
       );
+      break;
+    // TODO: feature/master-leaderboard
+    case "leaderboard":
+      screen = <ComingSoon />;
       break;
   }
 
@@ -188,41 +204,7 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
   );
 }
 
-// จอชั่วคราวจนกว่าจะทำจอจริง — โชว์เวลาที่เหลือกับคะแนน staff จะได้รู้ว่าจอไม่ได้ค้าง
-type ComingSoonProps = {
-  view: MasterView;
-  lastMatch: MasterTeam[];
-  serverNow: number;
-  canCancel: boolean;
-  onCancel: () => void;
-};
-
-function ComingSoon({ view, lastMatch, serverNow, canCancel, onCancel }: ComingSoonProps) {
-  const endsAt = lastMatch[0]?.endsAt ?? null;
-  const secondsLeft = endsAt === null ? 0 : Math.max(0, Math.ceil((endsAt - serverNow) / 1000));
-  const clock = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
-
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-10">
-      <p className="text-head2 text-muted">{view} screen — coming soon</p>
-      {view === "battle" && <p className="text-head">Match in progress · {clock}</p>}
-      {view !== "leaderboard" &&
-        lastMatch.map((team) => (
-          <p key={team.id} className="text-head2">
-            {team.name}: {team.score}
-          </p>
-        ))}
-      {/* ย้ายไปจอ Battle จริงตอนทำ feature/master-battle */}
-      {view === "battle" && (
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={!canCancel}
-          className="rounded-2xl border-4 border-danger px-10 py-3 text-body text-danger hover:bg-danger/10 disabled:border-border disabled:text-muted disabled:hover:bg-transparent"
-        >
-          Cancel match
-        </button>
-      )}
-    </div>
-  );
+// จอชั่วคราวจนกว่าจะทำจอ leaderboard จริง
+function ComingSoon() {
+  return <p className="grid h-full place-items-center text-head2 text-muted">leaderboard screen — coming soon</p>;
 }

@@ -26,6 +26,8 @@ export type CombatBroadcast = {
   noun: string;
   damage: number;
   weak?: boolean;
+  // Monsters knocked out by this hit — the master screen skips the hit flash / weak! on a knockout, like the phone does
+  kills?: number;
   // MVP on the master screen: who hit, and their personal points for this hit (damage + MVP kill bonus)
   playerId?: string;
   points?: number;
