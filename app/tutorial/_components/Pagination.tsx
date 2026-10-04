@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 type TutorialPaginationProps = {
   currentPage: number;
@@ -16,54 +17,78 @@ export default function TutorialPagination({
   onPrev,
   onNext,
 }: TutorialPaginationProps) {
+  const router = useRouter();
   const isFirstPage = currentPage === 1;
   const isLastPage = currentPage === totalPages;
 
+  const [isPrevPressed, setIsPrevPressed] = useState(false);
+  const [isNextPressed, setIsNextPressed] = useState(false);
+
+  const handleNextClick = () => {
+    if (isLastPage) {
+      router.push("/lobby");
+    } else {
+      onNext();
+    }
+  };
+
   return (
-    <div className="flex items-center justify-center gap-5 select-none">
-      {/* ปุ่มย้อนกลับ */}
+    <div className="flex items-center justify-center gap-5 select-none touch-manipulation">
+      {/* -------------------- ปุ่มย้อนกลับ (PREV) -------------------- */}
       <button
         type="button"
         onClick={onPrev}
         disabled={isFirstPage}
-        className={`relative w-8 h-8 sm:w-9 sm:h-9 shrink-0 transition active:scale-95 cursor-pointer ${
-          isFirstPage ? "opacity-30 cursor-not-allowed active:scale-100" : ""
-        }`}
+        onPointerDown={() => !isFirstPage && setIsPrevPressed(true)}
+        onPointerUp={() => setIsPrevPressed(false)}
+        onPointerLeave={() => setIsPrevPressed(false)}
+        className={`relative w-8 h-8 sm:w-9 sm:h-9 shrink-0 cursor-pointer touch-manipulation transition-transform duration-75 ${
+          isPrevPressed ? "scale-95" : ""
+        } ${isFirstPage ? "opacity-30 cursor-not-allowed" : ""}`}
       >
         <Image
-          src="/tutorial/btn_back_default.png" 
+          src={
+            isPrevPressed && !isFirstPage
+              ? "/tutorial/btn_back_default.png"
+              : "/tutorial/btn_back.png"
+          }
           alt="Back"
           fill
           priority
           unoptimized
-          className="object-contain [image-rendering:pixelated] [image-rendering:-moz-crisp-edges] [image-rendering:crisp-edges]"
+          className="object-contain [image-rendering:pixelated] pointer-events-none select-none"
         />
       </button>
 
-      {/* ข้อความ Page X of Y */}
-      <span className="text-score text-foreground tracking-widest min-w-[130px] text-center">
+      {/* -------------------- ข้อความ Page of -------------------- */}
+      <span className="text-score text-foreground tracking-widest min-w-[130px] text-center font-pixel">
         Page {currentPage} of {totalPages}
       </span>
 
-      {/* ปุ่มหน้าถัดไป */}
+      {/* -------------------- ปุ่มหน้าถัดไป (NEXT) -------------------- */}
       <button
         type="button"
-        onClick={onNext}
-        disabled={isLastPage}
-        className={`relative w-8 h-8 sm:w-9 sm:h-9 shrink-0 transition active:scale-95 cursor-pointer ${
-          isLastPage ? "opacity-30 cursor-not-allowed active:scale-100" : ""
+        onClick={handleNextClick}
+        onPointerDown={() => setIsNextPressed(true)}
+        onPointerUp={() => setIsNextPressed(false)}
+        onPointerLeave={() => setIsNextPressed(false)}
+        className={`relative w-8 h-8 sm:w-9 sm:h-9 shrink-0 cursor-pointer touch-manipulation transition-transform duration-75 ${
+          isNextPressed ? "scale-95" : ""
         }`}
       >
         <Image
-          src="/tutorial/btn_next_default.png" 
+          src={
+            isNextPressed
+              ? "/tutorial/btn_next_default.png"
+              : "/tutorial/btn_next.png"
+          }
           alt="Next"
           fill
           priority
           unoptimized
-          className="object-contain [image-rendering:pixelated] [image-rendering:-moz-crisp-edges] [image-rendering:crisp-edges]"
+          className="object-contain [image-rendering:pixelated] pointer-events-none select-none"
         />
-        
-        </button>
+      </button>
     </div>
   );
 }

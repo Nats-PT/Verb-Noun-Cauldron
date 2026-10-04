@@ -17,57 +17,56 @@ const tutorialData = [
         THE MATCHING <span className="text-noun">NOUN</span>.
       </span>
     ),
-    image: "/tutorial/step1.png",
+    image: "/tutorial/tutorial_1.gif",
   },
   {
     page: 2,
-    title: "BREW & ATTACK",
+    title: "HOW TO PLAY",
     descElement: (
       <span>
         DROP CARDS INTO CAULDRON<br />
         TO ATTACK MONSTERS!
       </span>
     ),
-    image: "/tutorial/step2.png",
+    image: "/tutorial/tutorial_2.gif",
   },
   {
     page: 3,
-    title: "DEFEAT MONSTERS",
+    title: "HOW TO PLAY",
     descElement: (
       <span>
         CLEAR 4 MONSTERS TO<br />
-        SUMMON THE FINAL BOSS.
+        SUMMON FINAL BOSS.
       </span>
     ),
-    image: "/tutorial/step3.png",
+    image: "/tutorial/tutorial_3.gif",
   },
   {
     page: 4,
-    title: "INFINITE BOSS",
+    title: "HOW TO PLAY",
     descElement: (
       <span>
         BOSS HAS <span className="text-danger">INFINITE HP</span>!<br />
-        DEAL MAX DAMAGE BEFORE TIME OUT.
+        MAX DAMAGE BEFORE TIME UP!
       </span>
     ),
-    image: "/tutorial/step4.png",
+    image: "/tutorial/tutorial_4.gif",
   },
 ];
 
 export default function TutorialContent({ currentPage }: TutorialContentProps) {
   const currentContent = tutorialData[currentPage - 1] || tutorialData[0];
 
-  return (
-    <div className="flex h-full w-full flex-col items-center justify-between text-center select-none font-pixel py-1">
-      {/* 1. ส่วนหัวข้อ: ล็อกความสูงเพื่อไม่ให้กระทบตำแหน่งภาพ */}
-      <div className="h-10 flex items-center justify-center">
+    return (
+    <div className="flex h-full w-full flex-col items-center justify-between text-center select-none py-1 sm:py-2">
+
+      <div className="flex items-center justify-center pt-1">
         <h2 className="text-head2 text-foreground uppercase tracking-wider drop-shadow-[0_2px_0_#000]">
           {currentContent.title}
         </h2>
       </div>
-
-      {/* 2. กรอบภาพในเกม: ล็อกสัดส่วนและขนาดคงที่ ทุกหน้าจะสูงเท่ากันเป๊ะ ไม่บีบไม่ยืด */}
-      <div className="relative w-full max-w-[280px] h-[360px] flex items-center justify-center overflow-hidden border-2 border-primary rounded-md bg-surface/30">
+                                  {/* กว้างโทรศัพท์     กว้างไอแพด         ปกติ     สูงไอแพด*/}     
+      <div className="relative w-full max-w-[285px] sm:max-w-[300px] h-[460px] sm:h-[480px] my-1 flex items-center justify-center overflow-hidden border-2 border-primary rounded-md bg-surface/30 shadow-[0_0_12px_rgba(219,19,129,0.2)]">
         {currentContent.image ? (
           <Image
             src={currentContent.image}
@@ -78,15 +77,14 @@ export default function TutorialContent({ currentPage }: TutorialContentProps) {
             className="object-contain [image-rendering:pixelated] [image-rendering:-moz-crisp-edges] [image-rendering:crisp-edges]"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted text-score">
-            ภาพในเกม
+          <div className="flex h-full w-full items-center justify-center text-muted text-score ">
+            NO IMAGE
           </div>
         )}
       </div>
 
-      {/* 3. กล่องข้อความด้านล่าง: ล็อกความสูงตายตัว (h-[64px]) รองรับ 2 บรรทัด ตัวหนังสือจะไม่ขยับเวลากดเปลี่ยนหน้า */}
-      <div className="w-full max-w-[320px] h-[64px] flex items-center justify-center">
-        <p className="text-score text-foreground uppercase tracking-wide leading-tight">
+      <div className="w-full max-w-[340px] h-[48px] sm:h-[54px] flex items-center justify-center px-1">
+        <p className="text-score text-foreground tracking-wide leading-tight sm:leading-relaxed text-center">
           {currentContent.descElement}
         </p>
       </div>
