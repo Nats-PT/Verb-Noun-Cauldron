@@ -119,7 +119,7 @@ export default function LobbyPage() {
   return (
     // redline (จอ 797): บน 26 · ปุ่ม 36 · 18 · Leaderboard 177 · 18 · ทีม 320 (ห่างกัน 11) · 64 · Ready 55 · ล่าง 77
     <main
-      className="mx-auto flex h-dvh w-full max-w-md flex-col px-[18px]"
+      className="relative mx-auto flex h-dvh w-full max-w-md flex-col px-[18px] border-x border-border bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]"
       style={{ paddingTop: fluid(16, 26), paddingBottom: fluid(24, 77) }}
     >
       <header className="flex items-center justify-between">
