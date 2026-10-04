@@ -1,28 +1,20 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation"; // 💡 1. อิมพอร์ต useRouter จาก next/navigation
-import { getDetailedLeaderboard } from "@/lib/leaderboard";
-import type { TeamId } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import { getMatchWinnerState, type MatchTeamResult } from "@/lib/winner";
 import WinnerHeader from "./_components/header";
 import TeamRankItem from "./_components/TeamRankItem";
 import NextButton from "./_components/NextButton";
 
-type TeamResult = {
-  rank: "1st" | "2nd";
-  teamId: TeamId;
-  teamName: string;
-  score: number;
-  isWinner: boolean;
-};
-
-const fallbackResults: TeamResult[] = [
+const fallbackResults: MatchTeamResult[] = [
   {
     rank: "1st",
     teamId: 1,
     teamName: "THUNDER DRAGONS",
     score: 2450,
     isWinner: true,
+    isMyTeam: true,
   },
   {
     rank: "2nd",
@@ -30,37 +22,23 @@ const fallbackResults: TeamResult[] = [
     teamName: "ARCANE PHOENIXES",
     score: 2180,
     isWinner: false,
+    isMyTeam: false,
   },
 ];
 
 export default function WinnerPage() {
-  const router = useRouter(); // 💡 2. ประกาศเรียกใช้ router
-  const [results, setResults] = useState<TeamResult[]>(fallbackResults);
+  const router = useRouter();
+  const [results, setResults] = useState<MatchTeamResult[]>(fallbackResults);
+  const [isVictory, setIsVictory] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);
-
-  const isVictory = results[0]?.isWinner ?? true;
 
   useEffect(() => {
     async function fetchBattleResult() {
       try {
-        const data = await getDetailedLeaderboard(2);
-        if (data && data.length >= 2) {
-          setResults([
-            {
-              rank: "1st",
-              teamId: (Number(data[0].id) || 1) as TeamId,
-              teamName: data[0].name || "TEAM 1",
-              score: data[0].score,
-              isWinner: true,
-            },
-            {
-              rank: "2nd",
-              teamId: (Number(data[1].id) || 2) as TeamId,
-              teamName: data[1].name || "TEAM 2",
-              score: data[1].score,
-              isWinner: false,
-            },
-          ]);
+        const state = await getMatchWinnerState();
+        if (state && state.teams.length > 0) {
+          setResults(state.teams);
+          setIsVictory(state.isVictory);
         }
       } catch (err) {
         console.error("Failed to fetch battle results:", err);
@@ -72,13 +50,12 @@ export default function WinnerPage() {
     fetchBattleResult();
   }, []);
 
-  // 💡 3. แก้ไขฟังก์ชัน handleNext ให้เปลี่ยนหน้าไปยัง /leaderboard
   const handleNext = () => {
-    router.push("/leaderboard"); // ปรับเปลี่ยน Path ตาม Route ของหน้า Leaderboard ในโปรเจกต์ของคุณได้เลยครับ
+    router.push("/leaderboard");
   };
 
   return (
-    <main className="relative mx-auto flex min-h-screen w-full max-w-[390px] flex-col items-center bg-[#18121a] pt-[26px] pb-[88px] px-[26px] select-none font-pixel">
+    <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center bg-[#18121a] pt-[26px] pb-[88px] px-[26px] select-none font-pixel">
       {/* 1. Header Section */}
       <WinnerHeader isWinner={isVictory} />
 
@@ -103,7 +80,7 @@ export default function WinnerPage() {
       </section>
 
       {/* 3. Footer Action Button */}
-      <div className="w-full mt-auto pt-10">
+      <div className="w-full mt-2 pt-10">
         <NextButton onClick={handleNext} />
       </div>
     </main>
