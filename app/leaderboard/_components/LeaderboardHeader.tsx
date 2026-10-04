@@ -3,7 +3,7 @@ export default function LeaderboardHeader() {
     <div className="w-full">
       {/* Title */}
       <div className="flex w-full justify-center pt-2 pb-6">
-        <h1 className="text-center font-pixel text-head text-foreground [-webkit-text-stroke:2px_var(--border)]">
+        <h1 className="text-center font-pixel text-head font-bold text-white drop-shadow-[0_6px_12px_#f5c027]">
           Leaderboard
         </h1>
       </div>
