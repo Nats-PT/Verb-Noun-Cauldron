@@ -2,14 +2,30 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { getDetailedLeaderboard, subscribeToLeaderboard } from "@/lib/leaderboard";
+import { leaveLobby } from "@/lib/lobby";
 import type { DetailedLeaderboardEntry } from "@/lib/types";
 import LeaderboardHeader from "./_components/LeaderboardHeader";
 import LeaderboardRow from "./_components/LeaderboardRow";
+import HomeButton from "./_components/HomeButton";
 
 export default function LeaderboardPage() {
+  const router = useRouter();
   const [leaderboard, setLeaderboard] = useState<DetailedLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleHome = async () => {
+    setLoggingOut(true);
+    try {
+      await leaveLobby();
+    } catch (err) {
+      console.error("[Leaderboard] Error during logout:", err);
+    } finally {
+      router.push("/login");
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -45,8 +61,8 @@ export default function LeaderboardPage() {
   });
 
   return (
-    <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center p-3 select-none overflow-hidden border-x border-border bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]">
-      <div className="relative flex h-full max-h-[840px] w-full flex-col overflow-hidden">
+    <main className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col items-center p-3 pb-10 select-none overflow-y-auto border-x border-border bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]">
+      <div className="relative flex h-[720px] w-full flex-col shrink-0 overflow-hidden">
         
         <div className="pointer-events-none absolute inset-0 z-0">
           <Image
@@ -80,6 +96,10 @@ export default function LeaderboardPage() {
         </div>
 
       </div>
+
+      <footer className="w-full mt-6 flex justify-center shrink-0">
+        <HomeButton onClick={handleHome} disabled={loggingOut} />
+      </footer>
     </main>
   );
 }
