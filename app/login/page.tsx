@@ -25,12 +25,20 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      // เรียกใช้ Supabase Anonymous Login พร้อมส่งชื่อและทีม
-      const res = await anonLogin({ username: name, team: selectedTeam });
-      if (res.success) {
-        router.push("/lobby");
+      const doLogin = async () => {
+        // เรียกใช้ Supabase Anonymous Login พร้อมส่งชื่อและทีม
+        const res = await anonLogin({ username: name, team: selectedTeam });
+        if (res.success) {
+          router.push("/lobby");
+        } else {
+          alert(res.error || "Failed to join team. Please try again.");
+        }
+      };
+
+      if (typeof window !== "undefined" && "locks" in navigator) {
+        await navigator.locks.request("cauldron_login_lock", doLogin);
       } else {
-        alert(res.error || "Failed to join team. Please try again.");
+        await doLogin();
       }
     } catch (err) {
       console.error(err);

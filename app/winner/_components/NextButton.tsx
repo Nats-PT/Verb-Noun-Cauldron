@@ -21,7 +21,7 @@ export default function NextButton({
       {/* ภาพพื้นหลังปุ่ม Pixel (คมชัด Pixelated) */}
       <div className="pointer-events-none absolute inset-0 z-0">
         <Image
-          src="/btn_primary.png"
+          src="/login/btn-primary.png"
           alt="Button Frame"
           fill
           priority
