@@ -45,7 +45,7 @@ export default function LeaderboardPage() {
   });
 
   return (
-    <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center p-3 select-none overflow-hidden bg-background">
+    <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center p-3 select-none overflow-hidden border-x border-border bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]">
       <div className="relative flex h-full max-h-[840px] w-full flex-col overflow-hidden">
         
         <div className="pointer-events-none absolute inset-0 z-0">

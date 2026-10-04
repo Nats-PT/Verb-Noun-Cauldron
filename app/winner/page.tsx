@@ -55,7 +55,7 @@ export default function WinnerPage() {
   };
 
   return (
-    <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center bg-[#18121a] pt-[26px] pb-[88px] px-[26px] select-none font-pixel">
+    <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center border-x border-border bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated] pt-[26px] pb-[88px] px-[26px] select-none font-pixel">
       {/* 1. Header Section */}
       <WinnerHeader isWinner={isVictory} />
 
