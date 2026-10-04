@@ -1,12 +1,15 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
+import { pixelFrame } from "@/lib/pixel-frame";
 
 type NextButtonProps = {
   onClick: () => void;
   label?: string;
 };
+
+// ใช้ pixelFrame แบบ 9-slice เหมือน ReadyButton หน้า lobby และ PLAY! หน้า login
+const buttonFrame = pixelFrame("/login/btn-primary.png", { slice: 6 });
 
 export default function NextButton({
   onClick,
@@ -16,25 +19,10 @@ export default function NextButton({
     <button
       type="button"
       onClick={onClick}
-      className="relative w-full aspect-[246/56] max-w-[246px] mx-auto flex items-center justify-center transition-transform active:scale-95 cursor-pointer select-none"
+      style={buttonFrame}
+      className="flex h-[55px] w-[206px] mx-auto items-center justify-center text-body text-accent [image-rendering:pixelated] hover:brightness-110 active:scale-95 cursor-pointer select-none"
     >
-      {/* ภาพพื้นหลังปุ่ม Pixel (คมชัด Pixelated) */}
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <Image
-          src="/login/btn-primary.png"
-          alt="Button Frame"
-          fill
-          priority
-          unoptimized
-          style={{ imageRendering: "pixelated" }}
-          className="object-fill"
-        />
-      </div>
-
-      {/* ข้อความบนปุ่ม */}
-      <span className="relative z-10 font-pixel text-body font-bold text-[#ffe600] uppercase tracking-wider drop-shadow-[0_2px_0_#000]">
-        {label}
-      </span>
+      {label}
     </button>
   );
 }

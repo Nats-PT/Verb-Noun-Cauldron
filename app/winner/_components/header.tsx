@@ -7,24 +7,23 @@ type WinnerHeaderProps = {
 };
  
 export default function WinnerHeader({ isWinner }: WinnerHeaderProps) {
-  // ใส่เป็น false ถาวรตงนี้เลย
-  const showVictory = true; // เปลี่ยนเป็น false เพื่อทดสอบ DEFEAT
+  const showVictory = isWinner ?? true;
  
   const status = showVictory
     ? {
         label: "VICTORY",
         icon: "/crown.png",
-        colorClass: "text-[#f5c027]",
+        styleClass: "text-white drop-shadow-[0_6px_12px_#f5c027]",
       }
     : {
         label: "DEFEAT",
         icon: "/defeat.png",
-        colorClass: "text-white",
+        styleClass: "text-white drop-shadow-[0_6px_12px_#fff]",
       };
  
   return (
-    <div className="flex flex-col items-center select-none pt-5">
-      <div className="flex items-center gap-[28px]">
+    <div className="flex flex-col items-center select-none pt-5 w-full">
+      <div className="flex items-center gap-[16px] justify-center w-full">
         <div className="relative w-10 h-10 shrink-1 translate-y-1">
           <Image
             src={status.icon}
@@ -37,7 +36,7 @@ export default function WinnerHeader({ isWinner }: WinnerHeaderProps) {
           />
         </div>
         <h1
-          className={`text-head uppercase tracking-wider font-bold ${status.colorClass} drop-shadow-[0_4px_0_#000]`}
+          className={`text-head uppercase tracking-wider font-bold ${status.styleClass}`}
         >
           {status.label}
         </h1>
