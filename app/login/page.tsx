@@ -29,7 +29,7 @@ export default function LoginPage() {
         // เรียกใช้ Supabase Anonymous Login พร้อมส่งชื่อและทีม
         const res = await anonLogin({ username: name, team: selectedTeam });
         if (res.success) {
-          router.push("/lobby");
+          router.push("/tutorial");
         } else {
           alert(res.error || "Failed to join team. Please try again.");
         }
