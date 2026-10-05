@@ -58,7 +58,7 @@ export default function TutorialContent({ currentPage }: TutorialContentProps) {
   const currentContent = tutorialData[currentPage - 1] || tutorialData[0];
 
     return (
-    <div className="flex h-full w-full flex-col items-center justify-between text-center select-none py-1 sm:py-2">
+    <div className="flex h-full w-full flex-col items-center justify-between text-center select-none py-2 gap-3">
 
       <div className="flex items-center justify-center pt-1">
         <h2 className="text-head2 text-foreground uppercase tracking-wider drop-shadow-[0_2px_0_#000]">
@@ -69,6 +69,7 @@ export default function TutorialContent({ currentPage }: TutorialContentProps) {
       <div className="relative w-full max-w-[285px] sm:max-w-[300px] h-[460px] sm:h-[480px] my-1 flex items-center justify-center overflow-hidden border-2 border-primary rounded-md bg-surface/30 shadow-[0_0_12px_rgba(219,19,129,0.2)]">
         {currentContent.image ? (
           <Image
+            key={currentContent.image}
             src={currentContent.image}
             alt={currentContent.title}
             fill

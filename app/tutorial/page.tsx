@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Pagination from "./_components/Pagination";
-import TutorialContent from "./_components/TutorialContent";
+import TutorialContent from "@/components/TutorialContent";
 
 const TOTAL_PAGES = 4;
 
