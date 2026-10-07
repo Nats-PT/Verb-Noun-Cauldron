@@ -13,6 +13,7 @@ import {
   type MasterTeam,
   type MasterView,
 } from "@/lib/master";
+import LeaderboardScreen from "./LeaderboardScreen";
 import PrepareScreen from "./PrepareScreen";
 
 // สมองของจอ master: ดึงข้อมูล + ฟัง realtime แล้วเลือกจอเองตามสถานะ (กฎอยู่ใน pickView)
@@ -80,10 +81,11 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
           onStart={() => forceStart(state)}
         />
       );
-    // TODO: ทำทีละ branch — feature/master-battle, master-winner, master-leaderboard
+    case "leaderboard":
+      return <LeaderboardScreen />;
+    // TODO: ทำทีละ branch — feature/master-battle, master-winner
     case "battle":
     case "winner":
-    case "leaderboard":
       return <ComingSoon view={view} lastMatch={state.lastMatch} serverNow={serverNow} />;
   }
 }

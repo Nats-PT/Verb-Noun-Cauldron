@@ -1,7 +1,17 @@
 // ทดสอบกฎเลือกจอของ master — รันด้วย `npm test`
 import { describe, expect, it } from "vitest";
 import { FINISH_DELAY_MS } from "./game/rules";
-import { pickView, startableTeamIds, WINNER_SHOW_MS, type MasterState, type MasterTeam } from "./master";
+import {
+  formatRank,
+  formatScore,
+  LEADERBOARD_ROWS,
+  leaderboardRows,
+  pickView,
+  startableTeamIds,
+  WINNER_SHOW_MS,
+  type MasterState,
+  type MasterTeam,
+} from "./master";
 import type { TeamId } from "./types";
 
 function team(id: number, slot: TeamId, playerCount: number, endsAt: number | null = null): MasterTeam {
@@ -61,5 +71,26 @@ describe("ทีมที่ได้เริ่มตอนกด Start", () =
     expect(startableTeamIds({ ...empty, waiting: { 1: team(5, 1, 2), 2: team(6, 2, 0) } })).toEqual([5]);
     expect(startableTeamIds({ ...empty, waiting: { 1: team(5, 1, 2), 2: team(6, 2, 4) } })).toEqual([5, 6]);
     expect(startableTeamIds(empty)).toEqual([]);
+  });
+});
+
+describe("จอ leaderboard", () => {
+  it("อันดับเขียนแบบหน้ามือถือ 1ST 2ND 3RD แล้ว TH", () => {
+    expect([1, 2, 3, 4, 10, 11].map(formatRank)).toEqual(["1ST", "2ND", "3RD", "4TH", "10TH", "11TH"]);
+  });
+
+  it("คะแนน 6 หลักเติม 0 ข้างหน้า", () => {
+    expect(formatScore(1000)).toBe("001000");
+    expect(formatScore(0)).toBe("000000");
+    expect(formatScore(100000)).toBe("100000");
+  });
+
+  it("เติมแถวว่างให้ครบ 10 แถว ลำดับตามที่ได้มา และตัดส่วนเกิน", () => {
+    const entry = (id: number) => ({ id: String(id), name: `Team ${id}`, score: 100 - id });
+    const rows = leaderboardRows([entry(1), entry(2)]);
+    expect(rows).toHaveLength(LEADERBOARD_ROWS);
+    expect(rows.slice(0, 2).map((r) => r?.id)).toEqual(["1", "2"]);
+    expect(rows.slice(2).every((r) => r === null)).toBe(true);
+    expect(leaderboardRows(Array.from({ length: 12 }, (_, i) => entry(i)))).toHaveLength(LEADERBOARD_ROWS);
   });
 });
