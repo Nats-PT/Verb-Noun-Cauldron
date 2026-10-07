@@ -12,11 +12,25 @@ type PrepareScreenProps = {
   onStart: () => Promise<string | null>;
 };
 
-// กรอบ/ปุ่ม pixel art ชุดเดียวกับมือถือ (art วาดขนาดเท่า Figma มือถือ) ขยายลายขอบ ×3–4 ให้เข้ากับเวที 1920×1080
+// กรอบใหญ่ / ปุ่ม pixel art ชุดเดียวกับจอ master อื่น
 const outerFrame = pixelFrame("/lobby/frame-leader.png", { scale: 4 });
-const teamFrame = pixelFrame("/lobby/frame-player.png", { scale: 3 });
 const startFrame = pixelFrame("/login/btn-primary.png", { slice: 6, scale: 3 });
 const startDisabledFrame = pixelFrame("/login/input-bg.png", { slice: 6, scale: 3 });
+
+const pixelated = "[image-rendering:pixelated]";
+
+// ตำแหน่ง / ขนาดทั้งหมดเป็น px บนเวที 1920×1080 วัดจาก design ของ art (Lobby_mas)
+// ตัวหนังสือที่ใหญ่กว่า token ของทีม (ตั้งไว้สำหรับมือถือ) ใส่ค่า px ในไฟล์นี้ — แบบเดียวกับ LeaderboardScreen
+const titleSize = "text-[96px] leading-none";
+const teamNameSize = "text-[40px] leading-none";
+const startSize = "text-[44px] leading-none";
+
+// หัวข้อแบบ design: เหลืองมะนาว #ffff5b (ไม่ใช่ accent #fae05f ของทีม — design master ใช้สีนี้ทั้ง Prepare / Leaderboard)
+// + เงาทองเข้มตกลงล่าง ขอบตัวอักษรคม (ไม่ใช่แสงฟุ้งรอบตัว) — ต้องตรงกับ LeaderboardScreen
+const titleStyle = "text-[#ffff5b] drop-shadow-[0_6px_4px_#9a7414]";
+
+// กล่องทีม 834×417 ที่ x 113 / 977 — เส้นชมพูมุมมนเรียบตาม design (ไม่ใช่กรอบ pixel)
+const teamBoxLeft = { 1: "left-[113px]", 2: "left-[977px]" } as const;
 
 // จอรอเริ่ม = lobby ฉบับจอใหญ่ให้ทุกคนในบูธเห็น + ปุ่ม Start! ของ staff
 // force start — ไม่ต้องรอทุกคน Ready (Ready มีไว้ให้ staff ดูว่าควรกดตอนไหน)
@@ -32,76 +46,70 @@ export default function PrepareScreen({ teams, canStart, onStart }: PrepareScree
     setStarting(false);
   }
 
-  const players = [...(teams[1]?.players ?? []), ...(teams[2]?.players ?? [])];
-  const readyCount = players.filter((p) => p.isReady).length;
-
-  // ข้อความสถานะแบบเดียวกับ lobby แต่พูดกับ staff
-  let status: string;
-  if (players.length === 0) status = "Waiting for players to join...";
-  else if (readyCount < players.length) status = `Players ready ${readyCount}/${players.length}`;
-  else status = "Everyone is ready!";
+  const enabled = canStart && !starting;
 
   return (
-    <main
-      style={outerFrame}
-      className="absolute inset-12 flex flex-col items-center gap-10 px-20 py-10 [image-rendering:pixelated]"
-    >
-      {/* โลโก้ตัวหนังสือแบบเดียวกับหน้า login */}
-      <h1 className="text-center text-head leading-tight text-primary [-webkit-text-stroke:2px_black]">
-        Verb-Noun
-        <br />
-        Cauldron
+    <>
+      <div aria-hidden style={outerFrame} className={`absolute inset-12 ${pixelated}`} />
+
+      <h1
+        className={`absolute top-[162px] left-1/2 -translate-x-1/2 whitespace-nowrap ${titleSize} ${titleStyle}`}
+      >
+        Verb-Noun Cauldron
       </h1>
 
-      <div className="grid w-full flex-1 grid-cols-2 gap-12">
-        <TeamColumn slot={1} team={teams[1]} />
-        <TeamColumn slot={2} team={teams[2]} />
-      </div>
+      <TeamBox slot={1} team={teams[1]} />
+      <TeamBox slot={2} team={teams[2]} />
 
-      <div className="flex flex-col items-center gap-4">
-        <button
-          type="button"
-          onClick={handleStart}
-          disabled={!canStart || starting}
-          style={canStart && !starting ? startFrame : startDisabledFrame}
-          className="px-24 py-4 text-head text-accent [image-rendering:pixelated] hover:brightness-110 active:scale-95 disabled:text-muted disabled:active:scale-100"
-        >
-          {starting ? "Starting..." : "Start!"}
-        </button>
+      {/* ปุ่ม 358×92 กึ่งกลาง ห่างใต้กล่องทีม 69 */}
+      <button
+        type="button"
+        onClick={handleStart}
+        disabled={!enabled}
+        style={enabled ? startFrame : startDisabledFrame}
+        className={`absolute top-[817px] left-[781px] h-[92px] w-[358px] ${startSize} ${pixelated} ${
+          enabled ? "text-accent hover:brightness-110 active:scale-95" : "text-muted"
+        }`}
+      >
+        {starting ? "Starting..." : "Start!"}
+      </button>
 
-        <p aria-live="polite" className={`text-body ${error ? "text-danger" : "text-muted"}`}>
-          {error ?? status}
-        </p>
-      </div>
-    </main>
+      {/* design ไม่มีข้อความใต้ปุ่ม — โชว์เฉพาะตอนกด Start แล้วพัง staff จะได้รู้ */}
+      <p aria-live="polite" className="absolute inset-x-0 top-[925px] text-center text-score text-danger">
+        {error}
+      </p>
+    </>
   );
 }
 
-// หน้าตาเดียวกับ TeamColumn ของ lobby (app/lobby/_components) แต่ขยายให้อ่านจากไกล ๆ ได้ และเรียง 2 คอลัมน์
-function TeamColumn({ slot, team }: { slot: TeamId; team: MasterTeam | null }) {
+// กล่องทีม: ชื่อทีม + จำนวนคน + การ์ดผู้เล่น 2 คอลัมน์ × 3 แถว
+function TeamBox({ slot, team }: { slot: TeamId; team: MasterTeam | null }) {
   const players = team?.players ?? [];
   // เติมช่องว่างให้ครบ TEAM_SIZE เหมือน lobby จะได้เห็นว่ายังรับได้อีกกี่คน
   const emptySlots = Math.max(TEAM_SIZE - players.length, 0);
 
   return (
-    <section style={teamFrame} className="flex flex-col gap-6 p-8 [image-rendering:pixelated]">
-      <h2 className="text-center text-head2">
-        {/* ยังไม่มีใครเข้าทีมนี้ = ยังไม่มีชื่อสุ่ม */}
-        <span className={`block truncate ${team ? "" : "text-muted"}`}>{team?.name ?? `Team ${slot}`}</span>
-        <span className="block text-body text-muted">
-          {players.length}/{TEAM_SIZE}
-        </span>
+    <section
+      aria-label={`Team ${slot}`}
+      className={`absolute top-[331px] ${teamBoxLeft[slot]} h-[417px] w-[834px] rounded-[20px] border-[8px] border-primary`}
+    >
+      {/* ยังไม่มีใครเข้าทีมนี้ = ยังไม่มีชื่อสุ่ม */}
+      <h2 className={`mt-[30px] truncate px-10 text-center ${teamNameSize} ${team ? "" : "text-muted"}`}>
+        {team?.name ?? `Team ${slot}`}
       </h2>
+      <p className="mt-[16px] text-center text-body leading-none">
+        {players.length}/{TEAM_SIZE}
+      </p>
 
-      {/* เติมลงทีละคอลัมน์: 3 คนซ้าย 2 คนขวา */}
-      <ul className="grid flex-1 grid-flow-col grid-cols-2 grid-rows-3 gap-4">
+      {/* การ์ด 293×68 ห่าง 121 / 20 — เติมลงทีละคอลัมน์: 3 คนซ้าย 2 คนขวา */}
+      <ul className="absolute inset-x-0 top-[123px] grid grid-flow-col grid-cols-[293px_293px] grid-rows-[repeat(3,68px)] justify-center gap-x-[121px] gap-y-[20px]">
         {players.map((player) => (
-          <PlayerRow key={player.id} player={player} />
+          <PlayerCard key={player.id} player={player} />
         ))}
         {Array.from({ length: emptySlots }, (_, i) => (
           <li
             key={`empty-${i}`}
-            className="flex items-center rounded-2xl border-4 border-dashed border-border px-6 text-body text-muted"
+            className="flex items-center rounded-[12px] border-[4px] border-dashed border-primary/15 pl-[31px] text-body text-muted"
           >
             Open slot
           </li>
@@ -111,12 +119,18 @@ function TeamColumn({ slot, team }: { slot: TeamId; team: MasterTeam | null }) {
   );
 }
 
-function PlayerRow({ player }: { player: Player }) {
+// Ready = ขอบชมพูทึบ + พื้นชมพูจาง, ยังไม่ Ready = ขอบเส้นประจาง
+function PlayerCard({ player }: { player: Player }) {
   return (
-    <li className="flex min-w-0 flex-col justify-center rounded-2xl border-4 border-transparent px-6">
-      <p className="truncate text-head2">{player.name}</p>
-      <p className={`text-body ${player.isReady ? "text-primary" : "text-muted"}`}>
-        {player.isReady ? "READY" : "waiting"}
+    <li
+      data-player={player.name}
+      className={`flex min-w-0 flex-col justify-center gap-[8px] rounded-[12px] border-[4px] pr-4 pl-[31px] ${
+        player.isReady ? "border-primary bg-primary/5" : "border-dashed border-primary/30"
+      }`}
+    >
+      <p className="truncate text-body leading-none">{player.name}</p>
+      <p className={`text-score leading-none ${player.isReady ? "text-primary" : "text-muted"}`}>
+        {player.isReady ? "Ready" : "waiting"}
       </p>
     </li>
   );
