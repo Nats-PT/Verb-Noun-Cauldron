@@ -24,6 +24,10 @@ const columns = "grid grid-cols-[500px_498px_auto] items-baseline";
 const titleSize = "text-[96px] leading-none";
 const headerSize = "text-[48px] leading-none";
 
+// หัวข้อแบบ design: เหลืองมะนาว #ffff5b (ไม่ใช่ accent #fae05f ของทีม — design master ใช้สีนี้ทั้ง Prepare / Leaderboard)
+// + เงาทองเข้มตกลงล่าง ขอบตัวอักษรคม (ไม่ใช่แสงฟุ้งรอบตัว) — ต้องตรงกับ PrepareScreen
+const titleStyle = "text-[#ffff5b] drop-shadow-[0_6px_4px_#9a7414]";
+
 // จอ Top 10 ตอนบูธว่าง (ไม่มีแมตช์ ไม่มีคนรอ) — ดึงเองจากตาราง leaderboard แล้วอัปเดตเมื่อมีทีมเล่นจบ
 // หม้อมุมขวาล่างมีช่องไว้ใส่ QR เข้าเกม (ยังไม่ใส่ — รอลิงก์จริง)
 export default function LeaderboardScreen() {
@@ -57,7 +61,7 @@ export default function LeaderboardScreen() {
     <>
       <div aria-hidden style={outerFrame} className={`absolute inset-12 ${pixelated}`} />
 
-      <h1 className={`absolute top-[150px] left-[178px] ${titleSize} text-accent drop-shadow-[0_0_12px_#f5c027]`}>
+      <h1 className={`absolute top-[150px] left-[178px] ${titleSize} ${titleStyle}`}>
         Leaderboard
       </h1>
 
