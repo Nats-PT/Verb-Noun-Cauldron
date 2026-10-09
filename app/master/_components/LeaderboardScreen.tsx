@@ -7,8 +7,8 @@ import { formatRank, formatScore, LEADERBOARD_ROWS, leaderboardRows } from "@/li
 import { pixelFrame } from "@/lib/pixel-frame";
 import type { LeaderboardEntry } from "@/lib/types";
 
-// กรอบชุดเดียวกับจอ master อื่น (Prepare / Winner)
-const outerFrame = pixelFrame("/lobby/frame-leader.png", { scale: 4 });
+// กรอบชุดเดียวกับจอ master อื่น — design ขยายลายขอบ ×12 (ชมพู 12 + ม่วงหม่น 24 ≈ 36px, ขั้นมุม 12px)
+const outerFrame = pixelFrame("/lobby/frame-leader.png", { scale: 12 });
 
 const pixelated = "[image-rendering:pixelated]";
 
