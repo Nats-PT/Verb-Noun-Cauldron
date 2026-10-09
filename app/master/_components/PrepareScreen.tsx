@@ -13,7 +13,8 @@ type PrepareScreenProps = {
 };
 
 // กรอบใหญ่ / ปุ่ม pixel art ชุดเดียวกับจอ master อื่น
-const outerFrame = pixelFrame("/lobby/frame-leader.png", { scale: 4 });
+// กรอบใหญ่ design ขยายลายขอบ ×12 (ชมพู 12 + ม่วงหม่น 24 ≈ 36px, ขั้นมุม 12px)
+const outerFrame = pixelFrame("/lobby/frame-leader.png", { scale: 12 });
 const startFrame = pixelFrame("/login/btn-primary.png", { slice: 6, scale: 3 });
 const startDisabledFrame = pixelFrame("/login/input-bg.png", { slice: 6, scale: 3 });
 
