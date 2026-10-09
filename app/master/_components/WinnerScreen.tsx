@@ -10,8 +10,9 @@ type WinnerScreenProps = {
   mvps: RankedPlayer[];
 };
 
-// กรอบชุดเดียวกับ PrepareScreen — art วาดขนาดเท่ามือถือ ขยายลายขอบ ×3–4 ให้เข้ากับเวที 1920×1080
-const outerFrame = pixelFrame("/winner/frame-result.png", { scale: 4 });
+// กรอบใหญ่: ลายขอบ ×12 เท่ากรอบจอ master อื่นใน design — ความหนา layout คง 16px ของข้างในจะได้ไม่ขยับ (ลายวาดทับ padding)
+// กรอบทีม: art วาดขนาดเท่ามือถือ ขยาย ×3 (จอนี้ยังไม่มี design)
+const outerFrame = pixelFrame("/winner/frame-result.png", { scale: 12, borderWidth: 16 });
 const teamFrame = pixelFrame("/lobby/frame-player.png", { scale: 3 });
 
 // ภาพ pixel art ขยายเป็นจำนวนเต็ม (มงกุฎ 20px ×4, เหรียญ ×3)
