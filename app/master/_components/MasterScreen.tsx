@@ -10,13 +10,13 @@ import {
   cancelMatch,
   forceStart,
   getMasterState,
+  matchStandings,
   pickView,
   resetAll,
   setFinalScore,
   startableTeamIds,
   subscribeToMaster,
   subscribeToPlayerScores,
-  topPlayers,
   type LastHits,
   type MasterState,
   type MasterView,
@@ -25,7 +25,7 @@ import {
 import BattleScreen from "./BattleScreen";
 import ConfirmDialog from "./ConfirmDialog";
 import PrepareScreen from "./PrepareScreen";
-import WinnerScreen from "./WinnerScreen";
+import MvpScreen from "./MvpScreen";
 
 type Dialog = "cancel" | "reset" | null;
 
@@ -140,12 +140,10 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
         />
       );
       break;
+    // จอหลังหมดเวลา = MVP ของรอบ (ไม่บอกทีมแพ้/ชนะ — มือถือบอกแล้ว) ชื่อจอยังเป็น "winner" ตาม pickView
     case "winner":
       screen = (
-        <WinnerScreen
-          teams={state.lastMatch}
-          mvps={topPlayers(scores.key === matchKey ? scores.byPlayer : {})}
-        />
+        <MvpScreen standings={matchStandings(state.lastMatch, scores.key === matchKey ? scores.byPlayer : {})} />
       );
       break;
     case "battle":

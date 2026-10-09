@@ -5,11 +5,11 @@ import {
   addHit,
   cancellableTeamIds,
   addLastHit,
+  matchStandings,
   pickView,
   setFinalScore,
   startableTeamIds,
   teamStandings,
-  topPlayers,
   WINNER_SHOW_MS,
   type PlayerScores, type MasterState, type MasterTeam } from "./master";
 import type { TeamId } from "./types";
@@ -119,28 +119,47 @@ describe("MVP: คะแนนรายคน", () => {
       list.map(([name, score]) => [name, { playerId: name, name, teamId: 1, score, hits: 1, final: true }]),
     );
   }
-  const ranks = (s: PlayerScores) => topPlayers(s).map((p) => [p.name, p.rank]);
+  // จอ MVP (เดิมเป็นเทสของ topPlayers — ย้ายมาตรวจ matchStandings ที่ใช้แทน กรณีเดิมครบ)
+  // ทีม 1 ไม่มีแถวผู้เล่นใน DB → ทุกคนมาจากคะแนนใน broadcast
+  const ranks = (s: PlayerScores) => matchStandings([team(1, 1, 0, 1)], s).map((p) => [p.name, p.rank]);
 
-  it("เรียงคะแนนมากไปน้อย เอา 3 อันดับ คนที่ยังไม่ได้คะแนนไม่นับ", () => {
+  it("เรียงคะแนนมากไปน้อย คนที่ยังไม่ได้คะแนนอยู่ท้ายและยังไม่มีอันดับ", () => {
     expect(ranks(scoresOf([["a", 50], ["b", 90], ["c", 0], ["d", 70], ["e", 10]]))).toEqual([
       ["b", 1],
       ["d", 2],
       ["a", 3],
+      ["e", 4],
+      ["c", null],
     ]);
-    expect(ranks(scoresOf([["a", 0]]))).toEqual([]);
+    expect(ranks(scoresOf([["a", 0]]))).toEqual([["a", null]]);
   });
 
-  it("คะแนนเท่ากันได้อันดับร่วม และเท่ากันที่อันดับ 3 โชว์ทุกคน", () => {
-    expect(ranks(scoresOf([["a", 100], ["b", 90], ["c", 90], ["d", 80]]))).toEqual([
+  it("คะแนนเท่ากันได้อันดับร่วม (เรียงตามชื่อ) และอันดับถัดไปข้ามตามจำนวนคน", () => {
+    expect(ranks(scoresOf([["a", 100], ["c", 90], ["b", 90], ["d", 80]]))).toEqual([
       ["a", 1],
       ["b", 2],
       ["c", 2],
+      ["d", 4],
     ]);
     expect(ranks(scoresOf([["a", 100], ["b", 90], ["c", 80], ["d", 80], ["e", 70]]))).toEqual([
       ["a", 1],
       ["b", 2],
       ["c", 3],
       ["d", 3],
+      ["e", 5],
+    ]);
+  });
+
+  it("รวมทุกทีม: ผู้เล่นใน DB ที่ยังไม่มีคะแนนอยู่ในรายการด้วย และจำทีมของแต่ละคน", () => {
+    const teams = [team(1, 1, 2, 1), team(2, 2, 1, 1)]; // p1-0, p1-1 | p2-0
+    const scores = {
+      "p2-0": { playerId: "p2-0", name: "Player 0", teamId: 2, score: 80, hits: 2, final: true },
+      "p1-1": { playerId: "p1-1", name: "Player 1", teamId: 1, score: 40, hits: 1, final: true },
+    };
+    expect(matchStandings(teams, scores).map((p) => [p.playerId, p.teamId, p.score, p.rank])).toEqual([
+      ["p2-0", 2, 80, 1],
+      ["p1-1", 1, 40, 2],
+      ["p1-0", 1, 0, null],
     ]);
   });
 });

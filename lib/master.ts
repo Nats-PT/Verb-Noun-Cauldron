@@ -360,17 +360,18 @@ export function setFinalScore(scores: PlayerScores, teamId: number, final: Playe
   };
 }
 
-export type RankedPlayer = PlayerScore & { rank: number };
+export type MatchStanding = Standing & { teamId: number };
 
-// top n แบบอันดับร่วม: 100, 90, 90, 80 → อันดับ 1, 2, 2, 4
-// คนที่คะแนนเท่ากับอันดับ n โชว์ทุกคน (เลยอาจเกิน n คน) — คนที่ยังไม่ได้คะแนนไม่นับ
-export function topPlayers(scores: PlayerScores, n = 3): RankedPlayer[] {
-  const sorted = Object.values(scores)
-    .filter((p) => p.score > 0)
-    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-  return sorted
-    .map((p) => ({ ...p, rank: sorted.findIndex((q) => q.score === p.score) + 1 }))
-    .filter((p) => p.rank <= n);
+// จอ MVP: ทุกคนในรอบ (ทุกทีมรวมกัน) เรียงคะแนนมากไปน้อย — 3 คนแรกขึ้นแท่น ทั้งหมดอยู่ในตาราง
+// ชื่อจาก DB (คนที่ได้ 0 ก็อยู่ด้วย ไว้ท้ายตาราง) + คะแนนจาก broadcast เหมือน teamStandings
+// อันดับร่วม: 100, 90, 90, 80 → 1, 2, 2, 4 · คะแนนเท่ากันเรียงตามชื่อ (ลำดับคงที่) · 0 คะแนน = ยังไม่มีอันดับ (null)
+export function matchStandings(teams: MasterTeam[], scores: PlayerScores): MatchStanding[] {
+  const rows = teams.flatMap((team) => teamStandings(team, scores).map((row) => ({ ...row, teamId: team.id })));
+  const sorted = rows.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  return sorted.map((row) => ({
+    ...row,
+    rank: row.score > 0 ? sorted.findIndex((other) => other.score === row.score) + 1 : null,
+  }));
 }
 
 // ฟังหมัด + คะแนนสุดท้ายของทุกทีมในแมตช์ — channel เดียวกับที่มือถือใช้ (team:<id>:battle) — คืนฟังก์ชันยกเลิก
