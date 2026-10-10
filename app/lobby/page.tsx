@@ -117,62 +117,70 @@ export default function LobbyPage() {
   else status = "Waiting for staff to start...";
 
   return (
-    // redline (จอ 797): บน 26 · ปุ่ม 36 · 18 · Leaderboard 177 · 18 · ทีม 320 (ห่างกัน 11) · 64 · Ready 55 · ล่าง 77
-    <main
-      className="relative mx-auto flex h-dvh w-full max-w-md flex-col px-[18px] border-x border-border bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]"
-      style={{ paddingTop: fluid(16, 26), paddingBottom: fluid(24, 77) }}
-    >
-      <header className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handleLeave}
-          aria-label="Leave lobby"
-          style={iconButtonFrame}
-          className={iconButton}
-        >
-          &lt;
-        </button>
+    <>
+      {/* Background expands all over screen and sticks while scrolling */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 -z-10 pointer-events-none bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]"
+      />
 
-        <button
-          type="button"
-          onClick={() => setHelpOpen(true)}
-          aria-label="How to play"
-          style={iconButtonFrame}
-          className={iconButton}
-        >
-          ?
-        </button>
-      </header>
-
-      <div className="shrink-0" style={{ marginTop: fluid(12, 18), height: fluid(150, 177) }}>
-        <Leaderboard entries={leaderboard} rows={3} className="flex h-full flex-col" />
-      </div>
-
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-[11px]" style={{ marginTop: fluid(12, 18) }}>
-        <TeamColumn
-          title={team1Title}
-          players={players.filter((p) => p.team === 1)}
-          currentPlayerId={currentPlayerId}
-        />
-        <TeamColumn
-          title={team2Title}
-          players={players.filter((p) => p.team === 2)}
-          currentPlayerId={currentPlayerId}
-        />
-      </div>
-
-      {/* redline มีแค่ช่องว่าง 64 กับปุ่ม — ข้อความสถานะเราเก็บไว้ (กายสั่งไม่เอาอะไรออก) วางกลางช่องว่างนั้น */}
-      <footer
-        className="flex flex-col items-center"
-        style={{ marginTop: fluid(8, 20), rowGap: fluid(8, 20) }}
+      {/* redline (จอ 797): บน 26 · ปุ่ม 36 · 18 · Leaderboard 177 · 18 · ทีม 320 (ห่างกัน 11) · 64 · Ready 55 · ล่าง 77 */}
+      <main
+        className="relative mx-auto flex h-dvh w-full max-w-md flex-col px-[18px]"
+        style={{ paddingTop: fluid(16, 26), paddingBottom: fluid(24, 77) }}
       >
-        <p aria-live="polite" className="text-center text-score text-muted">
-          {status}
-        </p>
-        <ReadyButton isReady={isReady} onToggle={handleToggleReady} />
-      </footer>
+        <header className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={handleLeave}
+            aria-label="Leave lobby"
+            style={iconButtonFrame}
+            className={iconButton}
+          >
+            &lt;
+          </button>
 
-      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
-    </main>
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            aria-label="How to play"
+            style={iconButtonFrame}
+            className={iconButton}
+          >
+            ?
+          </button>
+        </header>
+
+        <div className="shrink-0" style={{ marginTop: fluid(12, 18), height: fluid(150, 177) }}>
+          <Leaderboard entries={leaderboard} rows={3} className="flex h-full flex-col" />
+        </div>
+
+        <div className="grid min-h-0 flex-1 grid-cols-2 gap-[11px]" style={{ marginTop: fluid(12, 18) }}>
+          <TeamColumn
+            title={team1Title}
+            players={players.filter((p) => p.team === 1)}
+            currentPlayerId={currentPlayerId}
+          />
+          <TeamColumn
+            title={team2Title}
+            players={players.filter((p) => p.team === 2)}
+            currentPlayerId={currentPlayerId}
+          />
+        </div>
+
+        {/* redline มีแค่ช่องว่าง 64 กับปุ่ม — ข้อความสถานะเราเก็บไว้ (กายสั่งไม่เอาอะไรออก) วางกลางช่องว่างนั้น */}
+        <footer
+          className="flex flex-col items-center"
+          style={{ marginTop: fluid(8, 20), rowGap: fluid(8, 20) }}
+        >
+          <p aria-live="polite" className="text-center text-score text-muted">
+            {status}
+          </p>
+          <ReadyButton isReady={isReady} onToggle={handleToggleReady} />
+        </footer>
+
+        <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      </main>
+    </>
   );
 }

@@ -21,7 +21,7 @@ export default function TeamRankItem({
   const badgeIcon = isFirst ? "/one.png" : "/two.png";
 
   return (
-    <div className="relative w-full aspect-[338/169] flex items-center justify-between p-6 select-none">
+    <div className="relative w-full aspect-[338/169] flex items-center justify-between p-2 px-6 sm:p-6 select-none">
       {/* พื้นหลังกรอบการ์ด */}
       <div className="pointer-events-none absolute inset-1 z-2">
         <Image
@@ -36,7 +36,7 @@ export default function TeamRankItem({
       </div>
 
       {/* เนื้อหาการ์ด */}
-      <div className="relative z-12 w-full flex flex-col gap-8 h-full font-pixel text-white justify-center pr-2">
+      <div className="relative z-12 w-full flex flex-col gap-4 sm:gap-8 h-full font-pixel text-white justify-center pr-2">
         {/* แถวบน: เหรียญ + อันดับ (ซ้าย) | ชื่อทีม (ขวา) */}
         <div className="flex items-center justify-between gap-1 mt-3">
           <div className="flex items-center gap-2  shrink-0">

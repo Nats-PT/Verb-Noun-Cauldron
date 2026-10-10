@@ -55,34 +55,42 @@ export default function WinnerPage() {
   };
 
   return (
-    <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center border-x border-border bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated] pt-[26px] pb-[88px] px-[26px] select-none font-pixel">
-      {/* 1. Header Section */}
-      <WinnerHeader isWinner={isVictory} />
+    <>
+      {/* Background expands all over screen and sticks while scrolling */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 -z-10 pointer-events-none bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]"
+      />
 
-      {/* 2. Result Cards Section */}
-      <section className="w-full flex flex-col gap-[40px] mt-[68px]">
-        {loading ? (
-          <div className="flex flex-col gap-4 text-center text-white/50 animate-pulse py-12 text-body">
-            LOADING RESULT...
-          </div>
-        ) : (
-          results.map((item) => (
-            <TeamRankItem
-              key={item.teamId}
-              rank={item.rank}
-              teamId={item.teamId}
-              teamName={item.teamName}
-              score={item.score}
-              isWinner={item.isWinner}
-            />
-          ))
-        )}
-      </section>
+      <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center pt-[26px] pb-[88px] px-[26px] select-none font-pixel">
+        {/* 1. Header Section */}
+        <WinnerHeader isWinner={isVictory} />
 
-      {/* 3. Footer Action Button */}
-      <div className="w-full mt-2 pt-10">
-        <NextButton onClick={handleNext} />
-      </div>
-    </main>
+        {/* 2. Result Cards Section */}
+        <section className="w-full flex flex-col gap-[40px] mt-[68px]">
+          {loading ? (
+            <div className="flex flex-col gap-4 text-center text-white/50 animate-pulse py-12 text-body">
+              LOADING RESULT...
+            </div>
+          ) : (
+            results.map((item) => (
+              <TeamRankItem
+                key={item.teamId}
+                rank={item.rank}
+                teamId={item.teamId}
+                teamName={item.teamName}
+                score={item.score}
+                isWinner={item.isWinner}
+              />
+            ))
+          )}
+        </section>
+
+        {/* 3. Footer Action Button */}
+        <div className="w-full mt-2 pt-10">
+          <NextButton onClick={handleNext} />
+        </div>
+      </main>
+    </>
   );
 }
