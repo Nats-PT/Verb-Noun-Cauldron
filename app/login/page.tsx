@@ -49,23 +49,30 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="relativ gap-6 pt-4 mx-auto flex h-dvh w-full max-w-md flex-col items-center px-6 overflow-hidden select-none border-x border-border bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]">
-      
-      <div className="pointer-events-none absolute inset-0 z-0 flex items-end justify-center">
-        {/* pixel art 180×320 — ขยายเป็นจำนวนเต็ม + pixelated ถึงจะคม
-            ถ้ายืดเต็มจอ (object-cover) จะได้ ×2.1–2.6 ไม่ลงตัว เบราว์เซอร์เกลี่ยสีจนเบลอ
-            จอเตี้ย ×2 (360px), จอสูงตั้งแต่ 780px ×3 (540px ล้นซ้ายขวาได้ หม้ออยู่กลาง) หม้อจะใหญ่พอ ๆ กับเดิม */}
-        <img
-          src="/bg_login.gif"
-          alt="Background Animation"
-          width={360}
-          height={640}
-          className="w-[360px] max-w-none shrink-0 translate-y-[90px] [image-rendering:pixelated] [@media(min-height:780px)]:w-[540px]"
-        />
-      </div>
+    <>
+      {/* Background expands all over screen and sticks while scrolling */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 -z-10 pointer-events-none bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]"
+      />
+
+      <main className="relative gap-6 pt-4 pb-16 mx-auto flex h-dvh w-full max-w-md flex-col items-center px-6 select-none overflow-x-hidden overflow-y-auto [mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)]">
+        
+        <div className="pointer-events-none absolute inset-0 z-0 flex items-end justify-center overflow-hidden">
+          {/* pixel art 180×320 — ขยายเป็นจำนวนเต็ม + pixelated ถึงจะคม
+              ถ้ายืดเต็มจอ (object-cover) จะได้ ×2.1–2.6 ไม่ลงตัว เบราว์เซอร์เกลี่ยสีจนเบลอ
+              จอเตี้ย ×2 (360px), จอสูงตั้งแต่ 780px ×3 (540px ล้นซ้ายขวาได้ หม้ออยู่กลาง) หม้อจะใหญ่พอ ๆ กับเดิม */}
+          <img
+            src="/bg_login.gif"
+            alt="Background Animation"
+            width={360}
+            height={640}
+            className="w-[360px] max-w-none shrink-0 translate-y-[90px] [image-rendering:pixelated] [@media(min-height:780px)]:w-[540px]"
+          />
+        </div>
 
       <div className="relative z-10 flex w-full flex-col items-center pt-[54px]">
-        <h1 className="text-center text-[80px] font-bold text-primary [-webkit-text-stroke:2px_black] leading-18 select-none">
+        <h1 className="text-center text-[70px] font-bold text-primary [-webkit-text-stroke:2px_black] leading-18 select-none">
           Verb-Noun<br />Cauldron
         </h1>
       </div>
@@ -88,5 +95,6 @@ export default function LoginPage() {
         </div>
       </form>
     </main>
+  </>
   );
 }
