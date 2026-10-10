@@ -56,7 +56,7 @@ export default function LoginPage() {
         className="fixed inset-0 -z-10 pointer-events-none bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]"
       />
 
-      <main className="relative gap-6 pt-4 mx-auto flex min-h-dvh w-full max-w-md flex-col items-center px-6 select-none overflow-x-hidden">
+      <main className="relative gap-6 pt-4 pb-16 mx-auto flex h-dvh w-full max-w-md flex-col items-center px-6 select-none overflow-x-hidden overflow-y-auto [mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)]">
         
         <div className="pointer-events-none absolute inset-0 z-0 flex items-end justify-center overflow-hidden">
           {/* pixel art 180×320 — ขยายเป็นจำนวนเต็ม + pixelated ถึงจะคม

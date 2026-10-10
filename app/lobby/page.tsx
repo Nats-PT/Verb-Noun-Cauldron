@@ -126,7 +126,7 @@ export default function LobbyPage() {
 
       {/* redline (จอ 797): บน 26 · ปุ่ม 36 · 18 · Leaderboard 177 · 18 · ทีม 320 (ห่างกัน 11) · 64 · Ready 55 · ล่าง 77 */}
       <main
-        className="relative mx-auto flex h-dvh w-full max-w-md flex-col px-[18px]"
+        className="relative mx-auto flex h-dvh w-full max-w-md flex-col px-[18px] overflow-y-auto [mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)]"
         style={{ paddingTop: fluid(16, 26), paddingBottom: fluid(24, 77) }}
       >
         <header className="flex items-center justify-between">

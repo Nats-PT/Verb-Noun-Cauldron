@@ -68,7 +68,7 @@ export default function LeaderboardPage() {
         className="fixed inset-0 -z-10 pointer-events-none bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]"
       />
 
-      <main className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col items-center p-3 pb-10 select-none overflow-y-auto">
+      <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center p-3 pb-16 select-none overflow-y-auto [mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)]">
         <div className="relative flex h-[720px] w-full flex-col shrink-0 overflow-hidden">
           
           <div className="pointer-events-none absolute inset-0 z-0">
@@ -104,7 +104,7 @@ export default function LeaderboardPage() {
 
         </div>
 
-        <footer className="w-full mt-6 flex justify-center shrink-0">
+        <footer className="w-full mt-6 pb-6 flex justify-center shrink-0">
           <HomeButton onClick={handleHome} disabled={loggingOut} />
         </footer>
       </main>

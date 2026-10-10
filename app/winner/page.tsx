@@ -62,7 +62,7 @@ export default function WinnerPage() {
         className="fixed inset-0 -z-10 pointer-events-none bg-[url('/background/background_default.png')] bg-cover bg-center [image-rendering:pixelated]"
       />
 
-      <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center pt-[26px] pb-[88px] px-[26px] select-none font-pixel">
+      <main className="relative mx-auto flex h-dvh w-full max-w-md flex-col items-center pt-[26px] pb-[88px] px-[26px] select-none font-pixel overflow-y-auto [mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_calc(100%_-_64px),transparent_100%)]">
         {/* 1. Header Section */}
         <WinnerHeader isWinner={isVictory} />
 
