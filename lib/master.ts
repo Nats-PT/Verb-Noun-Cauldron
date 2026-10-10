@@ -1,7 +1,7 @@
 import { startMatch, type CombatBroadcast, type PlayerScoreBroadcast } from "./battle";
 import { FINISH_DELAY_MS } from "./game/rules";
 import { createClient } from "./supabase/client";
-import type { Player, TeamId } from "./types";
+import type { LeaderboardEntry, Player, TeamId } from "./types";
 
 // ข้อมูลทั้งหมดที่จอ master (TV ในบูธ) ใช้ — ทุกจอดึงจากตาราง teams + players
 
@@ -397,4 +397,27 @@ export function subscribeToPlayerScores(
   return () => {
     channels.forEach((channel) => supabase.removeChannel(channel));
   };
+}
+
+// ---------- จอ leaderboard ----------
+// รูปแบบอันดับ / คะแนนต้องเหมือนหน้า /leaderboard ของมือถือ (components/Leaderboard.tsx)
+// ถ้าหน้านั้นเปลี่ยนรูปแบบ ต้องตามแก้ที่นี่ด้วย
+
+export const LEADERBOARD_ROWS = 10;
+
+export function formatRank(rank: number) {
+  if (rank === 1) return "1ST";
+  if (rank === 2) return "2ND";
+  if (rank === 3) return "3RD";
+  return `${rank}TH`;
+}
+
+export function formatScore(score: number) {
+  return String(score).padStart(6, "0");
+}
+
+// เติมให้ครบ count แถว — ช่องที่ยังไม่มีทีมเป็น null (จอโชว์ *** / ___ แบบมือถือ)
+// อันดับ = ลำดับในรายการ: getLeaderboard เรียงคะแนนแล้ว ถ้าเท่ากันทีมที่เล่นก่อนอยู่บน
+export function leaderboardRows(entries: LeaderboardEntry[], count = LEADERBOARD_ROWS): (LeaderboardEntry | null)[] {
+  return Array.from({ length: count }, (_, i) => entries[i] ?? null);
 }

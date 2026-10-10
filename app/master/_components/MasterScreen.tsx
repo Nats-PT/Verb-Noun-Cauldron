@@ -24,6 +24,7 @@ import {
 } from "@/lib/master";
 import BattleScreen from "./BattleScreen";
 import ConfirmDialog from "./ConfirmDialog";
+import LeaderboardScreen from "./LeaderboardScreen";
 import PrepareScreen from "./PrepareScreen";
 import MvpScreen from "./MvpScreen";
 
@@ -158,9 +159,8 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
         />
       );
       break;
-    // TODO: feature/master-leaderboard
     case "leaderboard":
-      screen = <ComingSoon />;
+      screen = <LeaderboardScreen />;
       break;
   }
 
@@ -200,9 +200,4 @@ export default function MasterScreen({ forcedView }: { forcedView: MasterView | 
       )}
     </>
   );
-}
-
-// จอชั่วคราวจนกว่าจะทำจอ leaderboard จริง
-function ComingSoon() {
-  return <p className="grid h-full place-items-center text-head2 text-muted">leaderboard screen — coming soon</p>;
 }
