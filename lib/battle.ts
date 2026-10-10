@@ -26,6 +26,19 @@ export type CombatBroadcast = {
   noun: string;
   damage: number;
   weak?: boolean;
+  // Monsters knocked out by this hit — the master screen skips the hit flash / weak! on a knockout, like the phone does
+  kills?: number;
+  // MVP on the master screen: who hit, and their personal points for this hit (damage + MVP kill bonus)
+  playerId?: string;
+  points?: number;
+};
+
+// Sent by each phone at TIME'S UP — its own total, counted on the phone only (never stored in the DB).
+// The master screen ranks these into the MVP top 3.
+export type PlayerScoreBroadcast = {
+  playerId: string;
+  playerName: string;
+  score: number;
 };
 
 type DbTeamRow = {
@@ -84,6 +97,52 @@ export async function getMyBattleTeam(): Promise<BattleTeam | null> {
   if (teamError || !team) return null;
 
   return mapTeam(team as DbTeamRow);
+}
+
+export type MyMatchStatus =
+  | { kind: "playing"; team: BattleTeam; me: { id: string; name: string } }
+  | { kind: "waiting" } // still in the lobby (not started yet)
+  | { kind: "finished" } // ended normally (a teammate already recorded the result)
+  | { kind: "removed" } // staff pressed Cancel match / Reset all on the master screen
+  | { kind: "unknown" }; // not logged in, or a network error — don't act on it
+
+/**
+ * Checks the current player's match: when the battle page opens, and again when the phone wakes up
+ * and may have missed realtime events.
+ * Cancel match / Reset all (lib/master.ts) set the team to 'finished' with ends_at = null and delete the player rows,
+ * so "removed" = logged in but no player row, or a finished team without ends_at (a normal finish keeps ends_at).
+ * Unlike getMyBattleTeam, a failed request is "unknown" rather than null — a flaky network must not kick players out.
+ */
+export async function getMyMatchStatus(): Promise<MyMatchStatus> {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) return { kind: "unknown" };
+
+  const { data: player, error: playerError } = await supabase
+    .from("players")
+    .select("team_id, name")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (playerError) return { kind: "unknown" };
+  if (!player) return { kind: "removed" };
+
+  const { data: team, error: teamError } = await supabase
+    .from("teams")
+    .select("id, name, status, score, current_stage, monster_hp, team_size, ends_at, started_at")
+    .eq("id", player.team_id)
+    .maybeSingle();
+  if (teamError) return { kind: "unknown" };
+  if (!team) return { kind: "removed" };
+
+  if (team.status === "playing") {
+    return { kind: "playing", team: mapTeam(team as DbTeamRow), me: { id: user.id, name: player.name } };
+  }
+  if (team.status === "waiting") return { kind: "waiting" };
+  return team.ends_at === null ? { kind: "removed" } : { kind: "finished" };
 }
 
 /**
@@ -169,6 +228,21 @@ export async function broadcastCombatHit(
     type: "broadcast",
     event: "combat_hit",
     payload: hit,
+  });
+}
+
+/**
+ * Broadcasts this phone's final personal score at TIME'S UP (sent a few times in case one is lost).
+ * Uses the same team channel as combat hits; the master screen listens on both teams' channels.
+ */
+export async function broadcastPlayerScore(teamId: number, score: PlayerScoreBroadcast): Promise<void> {
+  const supabase = createClient();
+  const channel = supabase.channel(`team:${teamId}:battle`);
+
+  await channel.send({
+    type: "broadcast",
+    event: "player_score",
+    payload: score,
   });
 }
 

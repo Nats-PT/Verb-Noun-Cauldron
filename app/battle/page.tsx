@@ -2,11 +2,13 @@
 
 import { Feedback, PointerActivationConstraints, PointerSensor } from "@dnd-kit/dom";
 import { DragDropProvider } from "@dnd-kit/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import MonsterStage from "@/components/MonsterStage";
 import {
   broadcastCombatHit,
-  getMyBattleTeam,
+  broadcastPlayerScore,
+  getMyMatchStatus,
   getServerClockOffset,
   recordHit,
   subscribeToBattleTeam,
@@ -16,6 +18,7 @@ import { resolveDrop, swapCards } from "@/lib/game/engine";
 import { createMockBattle, createMockEndsAt } from "@/lib/game/mock-battle";
 import { MONSTERS, monsterMaxHp } from "@/lib/game/monsters";
 import { elapsedMs, FINISH_DELAY_MS, isTimeUp } from "@/lib/game/rules";
+import { personalPoints } from "@/lib/game/scoring";
 import type { Word } from "@/lib/game/types";
 import { WORD_PAIRS, WORD_POOL } from "@/lib/game/words";
 import { recordMatchResult } from "@/lib/leaderboard";
@@ -56,7 +59,14 @@ export default function BattlePage() {
   const [flash, setFlash] = useState<ComboFlash | null>(null);
   // เวลาที่โดนตีล่าสุด (null = ไม่ได้โดนตีอยู่) — ค่าใหม่ทุกครั้งที่ตี effect ด้านล่างจึงเริ่มนับใหม่
   const [hitAt, setHitAt] = useState<number | null>(null);
+  // ตัวเราเอง (null = โหมด mock) — ใส่ชื่อ/id ใน broadcast ให้จอ master จัดอันดับ MVP
+  const [me, setMe] = useState<{ id: string; name: string } | null>(null);
+  // คะแนนรายคน: นับในเครื่องนี้เท่านั้น ไม่ลง DB (battle.score เป็นคะแนนทีมที่ realtime เขียนทับ)
+  // ref ไว้ส่งตอนหมดเวลา, state ไว้แสดงบนป้าย TIME'S UP
+  const [myScore, setMyScore] = useState(0);
+  const myScoreRef = useRef(0);
   const now = useNow();
+  const router = useRouter();
   const matchRecordedRef = useRef(false);
 
   // หมดเวลา → ล็อกกระดาน + ป้าย TIME'S UP; อีก FINISH_DELAY_MS ต่อมา → ไปหน้าสรุป
@@ -66,15 +76,24 @@ export default function BattlePage() {
   // ดึงข้อมูลทีมจาก Supabase และเทียบเวลานาฬิกากับ server
   // ถ้าเปิดเล่นตรง ๆ (ไม่ได้เข้าห้อง lobby) หรือทีมยังไม่ถูกกด Start จะ fallback ใช้ mock ต่อไปโดยอัตโนมัติ
   // ทีมที่ยังรออยู่ (waiting) มี monster_hp = 0 และไม่มี ends_at — ถ้าเอามาใช้ มอนสเตอร์จะเริ่มด้วยเลือด 0
+  // ยกเว้นโดน Cancel / Reset ไปแล้ว (กดตอนหน้านี้ยังโหลดไม่เสร็จ หรือเครื่องโหลดหน้าใหม่ตอนตื่น) → กลับ login
+  // ไม่งั้นจะตกไปเล่น mock ต่อคนเดียวไม่รู้จบ
   useEffect(() => {
     let isMounted = true;
     async function initBattle() {
       try {
-        const [myTeam, clockOffset] = await Promise.all([
-          getMyBattleTeam(),
+        const [status, clockOffset] = await Promise.all([
+          getMyMatchStatus(),
           getServerClockOffset(),
         ]);
-        if (!isMounted || !myTeam || myTeam.status !== "playing") return;
+        if (!isMounted) return;
+        if (status.kind === "removed") {
+          router.replace("/login");
+          return;
+        }
+        if (status.kind !== "playing") return;
+        const myTeam = status.team;
+        setMe(status.me);
 
         setTeam(myTeam);
 
@@ -100,22 +119,32 @@ export default function BattlePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [router]);
 
   // ซิงค์ HP, ด่าน, และคะแนนของทีมแบบ Realtime เมื่อเพื่อนในทีมตีโดน
+  // + staff กด Cancel match / Reset all บนจอ master → ทีมถูกตั้ง ends_at = null → กลับหน้า login
+  //   (จบเกมปกติ ends_at ยังอยู่ จึงไม่โดนเด้ง)
   useEffect(() => {
     if (!team?.id) return;
 
+    function applyTeam(updatedTeam: BattleTeam) {
+      setTeam(updatedTeam);
+      const monsterIndex = Math.max(0, Math.min(MONSTERS.length - 1, updatedTeam.currentStage - 1));
+      setBattle((b) => ({
+        ...b,
+        score: updatedTeam.score,
+        monsterIndex,
+        monsterHp: updatedTeam.monsterHp,
+      }));
+    }
+
     const unsubscribe = subscribeToBattleTeam(team.id, {
       onTeamChange: (updatedTeam) => {
-        setTeam(updatedTeam);
-        const monsterIndex = Math.max(0, Math.min(MONSTERS.length - 1, updatedTeam.currentStage - 1));
-        setBattle((b) => ({
-          ...b,
-          score: updatedTeam.score,
-          monsterIndex,
-          monsterHp: updatedTeam.monsterHp,
-        }));
+        if (updatedTeam.endsAt === null) {
+          router.replace("/login");
+          return;
+        }
+        applyTeam(updatedTeam);
       },
       onCombatHit: () => {
         // เพื่อนร่วมทีมตีโดน → มอนสเตอร์ขึ้นภาพ hit (ตัวแดง) ชั่วขณะ
@@ -123,20 +152,58 @@ export default function BattlePage() {
       },
     });
 
+    // พับจอ / สลับแอปแล้ว realtime ไม่ส่ง event ที่พลาดไปย้อนหลัง → เปิดจอกลับมาถาม DB ใหม่
+    // โดน Cancel ระหว่างนั้น → กลับหน้า login, ยังเล่นอยู่ → อัปเดต HP / คะแนนที่พลาดไป
+    async function onVisible() {
+      if (document.visibilityState !== "visible") return;
+      const status = await getMyMatchStatus();
+      if (status.kind === "removed") router.replace("/login");
+      else if (status.kind === "playing") applyTeam(status.team);
+    }
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [team?.id]);
+  }, [team?.id, router]);
 
   // เมื่อหมดเวลา + 3 วิ บันทึกคะแนนเข้า leaderboard ผ่าน atomic RPC
+  // ถาม DB ก่อน: record_match_result ไม่เช็คว่าทีมยังเล่นอยู่ไหม — มือถือที่พับจอไว้ตอนโดน Cancel
+  // จะตื่นมาบันทึกทีมที่ยกเลิกไปแล้วลง leaderboard (เน็ตพังจนถามไม่ได้ = บันทึกตามเดิม)
   useEffect(() => {
     if (finished && team?.id && !matchRecordedRef.current) {
       matchRecordedRef.current = true;
-      recordMatchResult({ teamId: team.id }).catch((err) => {
-        console.error("[BattlePage] Failed to record match result:", err);
-      });
+      const teamId = team.id;
+      getMyMatchStatus()
+        .then((status) => {
+          if (status.kind === "removed") {
+            router.replace("/login");
+            return;
+          }
+          // finished = เพื่อนร่วมทีมบันทึกไปแล้ว
+          if (status.kind === "finished") return;
+          return recordMatchResult({ teamId });
+        })
+        .catch((err) => {
+          console.error("[BattlePage] Failed to record match result:", err);
+        });
     }
-  }, [finished, team?.id]);
+  }, [finished, team?.id, router]);
+
+  // หมดเวลา → ส่งคะแนนรายคนให้จอ master จัด MVP — ส่ง 3 ครั้ง (0, 1, 2 วิ) เผื่อหลุด ช่วงป้าย TIME'S UP พอดี
+  // broadcast ไม่รับประกันว่าถึง และไม่เก็บย้อนหลัง จอ master เอาค่าล่าสุดของแต่ละคน ส่งซ้ำจึงไม่นับเบิ้ล
+  useEffect(() => {
+    if (!timeUp || !team?.id || !me) return;
+    const teamId = team.id;
+    const send = () =>
+      broadcastPlayerScore(teamId, { playerId: me.id, playerName: me.name, score: myScoreRef.current }).catch((err) =>
+        console.error("[broadcastPlayerScore]", err),
+      );
+    send();
+    const timers = [setTimeout(send, 1000), setTimeout(send, 2000)];
+    return () => timers.forEach(clearTimeout);
+  }, [timeUp, team?.id, me]);
 
   // ผลการผสมโชว์แป๊บเดียว แล้วกลับไปแสดงคำในหม้อตามปกติ
   useEffect(() => {
@@ -182,14 +249,22 @@ export default function BattlePage() {
       // หมัดที่ล้มมอนสเตอร์ไม่โชว์ภาพ hit ด้วยเหตุผลเดียวกัน — ตัวใหม่โผล่มาในท่ายืนปกติ
       setHitAt(outcome.kills === 0 ? Date.now() : null);
 
+      const points = personalPoints(outcome.damage, outcome.kills);
+      myScoreRef.current += points;
+      setMyScore(myScoreRef.current);
+
       // ส่งผลการตีขึ้น Realtime Broadcast (~20ms) และบันทึกลง Database RPC
+      // points ไว้ให้จอ master รวมเป็นคะแนนรายคนสำรอง เผื่อเครื่องนี้ปิดไปก่อนส่งคะแนนสุดท้าย
       if (team?.id) {
         broadcastCombatHit(team.id, {
-          playerName: team.name,
+          playerName: me?.name ?? team.name,
+          playerId: me?.id,
+          points,
           verb: outcome.verb.text,
           noun: outcome.noun.text,
           damage: outcome.damage,
           weak: outcome.weak,
+          kills: outcome.kills,
         }).catch((err) => console.error("[broadcastCombatHit]", err));
 
         recordHit(team.id, outcome.damage).catch((err) =>
@@ -270,7 +345,8 @@ export default function BattlePage() {
           />
           {timeUp && (
             <TimeUpBanner
-              score={battle.score}
+              teamScore={battle.score}
+              myScore={myScore}
               correct={battle.correct}
               wrong={battle.wrong}
               secondsLeft={secondsLeft}

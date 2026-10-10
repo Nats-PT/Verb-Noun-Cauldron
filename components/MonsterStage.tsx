@@ -13,6 +13,8 @@ type MonsterStageProps = {
   weakHit?: boolean;
   // ขนาดกำหนดจากหน้าที่เรียกใช้ — ควรเป็น 120×90 (ขนาดภาพฉาก) คูณจำนวนเต็ม ภาพจะได้คม
   className?: string;
+  // ตัวหนังสือบนฉากขยายตามความกว้างฉาก (จอ master ฉากกว้าง 600) — ไม่ใส่ = ขนาด text-score ตายตัวแบบมือถือ
+  scaleText?: boolean;
 };
 
 // pixel art ต้องไม่ถูกบีบอัดและไม่ถูกทำให้เบลอตอนขยาย
@@ -20,6 +22,8 @@ const pixelated = "[image-rendering:pixelated]";
 
 // ตัวหนังสือบนฉาก ต้องมีเงาดำถึงจะอ่านออกบนพื้นหลังทุกด่าน
 const overlayText = "text-score text-foreground [text-shadow:2px_2px_0_black]";
+// แบบขยายตามฉาก: ขนาดเท่ามือถือเมื่อฉากกว้าง 353 (20px → 5.67cqw, เงา 2px → 0.57cqw)
+const scaledOverlayText = "text-[5.67cqw] leading-[1.2] text-foreground [text-shadow:0.57cqw_0.57cqw_0_black]";
 
 // ภาพแถบ HP กว้าง 76px: หัวใจกินซ้าย 11px ช่องเติมจริงคือ x 11–73 (62px) ขวาสุด 3px เป็นขอบ
 // คืนค่าว่าต้องตัดสีชมพูออกจากทางขวากี่ % ของภาพ ให้ HP 0–100% ตรงกับช่องเติมพอดี
@@ -36,7 +40,9 @@ export default function MonsterStage({
   hit = false,
   weakHit = false,
   className = "",
+  scaleText = false,
 }: MonsterStageProps) {
+  const text = scaleText ? scaledOverlayText : overlayText;
   const percent = monster.endless ? 100 : Math.max(0, Math.min(100, (hp / maxHp) * 100));
 
   return (
@@ -88,7 +94,7 @@ export default function MonsterStage({
       {/* แถบ HP จาก art 76×10 ซ้อน 3 ชั้น: พื้น → สีชมพู (ตัดตาม HP) → กรอบมีหัวใจ
           redline: กว้าง 129 สูง 17 ห่างขอบบนกรอบ 22 เริ่มที่ x 125 (ข้อความ HP อยู่ข้างหน้า) — จากฉากกว้าง 353 */}
       <div className="absolute top-[6.23cqw] left-[35.4cqw] aspect-[76/10] w-[36.5cqw]">
-        <span className={`absolute top-1/2 right-full mr-1 -translate-y-1/2 ${overlayText}`}>HP</span>
+        <span className={`absolute top-1/2 right-full -translate-y-1/2 ${scaleText ? "mr-[1.13cqw]" : "mr-1"} ${text}`}>HP</span>
         <div
           role="progressbar"
           aria-label={`${monster.name} HP`}
@@ -113,8 +119,8 @@ export default function MonsterStage({
 
       {/* ใต้แถบ HP: ENDLESS (เฉพาะตัวสุดท้าย) แล้วตามด้วย weak! ตอนตีโดนจุดอ่อน */}
       <div className="absolute inset-x-0 top-[12.5cqw] z-10 flex flex-col items-center">
-        {monster.endless && <span className={overlayText}>ENDLESS</span>}
-        {weakHit && <span className={`${overlayText} text-ready`}>weak!</span>}
+        {monster.endless && <span className={text}>ENDLESS</span>}
+        {weakHit && <span className={`${text} text-ready`}>weak!</span>}
       </div>
     </section>
   );

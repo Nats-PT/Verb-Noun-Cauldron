@@ -21,6 +21,14 @@ export const DAMAGE_VARIANCE = 0.1;
 // โบนัสเมื่อล้มมอนสเตอร์ได้หนึ่งตัว
 export const KILL_BONUS = 100;
 
+// คะแนนรายคน (MVP บนจอ master + ป้าย TIME'S UP) — คนตีหมัดที่ล้มได้แค่ส่วนน้อยของโบนัสทีม
+// จังหวะปิดเป็นเรื่องดวง หมัดเดียวไม่ควรพลิกอันดับ MVP ได้ (ตีหนึ่งครั้ง ~27–130)
+export const MVP_KILL_BONUS = 25;
+
+export function personalPoints(damage: number, kills: number) {
+  return damage + kills * MVP_KILL_BONUS;
+}
+
 export type DamageInput = {
   streak: number;
   // จำนวนคำ B1 ในคู่ (0–2)

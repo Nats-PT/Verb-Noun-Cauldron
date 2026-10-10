@@ -46,6 +46,12 @@ export default function LobbyPage() {
       const state = await getLobbyState();
       if (!isSubscribed) return;
 
+      // Staff pressed Reset all on the master screen → our player row is gone, join again
+      if (state.isRemoved) {
+        router.replace("/login");
+        return;
+      }
+
       // When the match is started by staff, automatically navigate to /battle
       if (state.isPlaying) {
         router.push("/battle");
