@@ -18,21 +18,14 @@ const GIF_DURATIONS: Record<number, number> = {
   4: 7230 + 1000, // ~8.23s (tutorial_4.gif)
 };
 
-// ใช้ <dialog> ของเบราว์เซอร์ — ปิดได้เฉพาะเมื่อกดปุ่ม "Got it" เท่านั้น
+// Standard React modal overlay — closes ONLY when clicking "Got it"
 export default function HelpModal({ open, onClose }: HelpModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Sync open state with native <dialog>
+  // Reset to slide 1 whenever the modal opens
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) {
-      setCurrentPage(1); // Always start from step 1 when opening
-      dialog.showModal();
-    }
-    if (!open && dialog.open) {
-      dialog.close();
+    if (open) {
+      setCurrentPage(1);
     }
   }, [open]);
 
@@ -48,44 +41,53 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
     return () => clearTimeout(timer);
   }, [open, currentPage]);
 
+  const handleSelectPage = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // If not open, do not render in DOM at all (prevents mobile background suspension)
+  if (!open) return null;
+
   return (
-    <dialog
-      ref={dialogRef}
-      onCancel={(e) => e.preventDefault()} // Closes ONLY via "Got it" button
-      className="m-auto w-[calc(100%-2rem)] max-w-md max-h-[92dvh] overflow-y-auto rounded-lg border-2 border-border bg-surface p-4 sm:p-5 text-foreground backdrop:bg-black/70 select-none"
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 select-none touch-manipulation"
     >
-      <TutorialContent currentPage={currentPage} />
+      <div className="relative w-full max-w-md max-h-[92dvh] overflow-y-auto rounded-lg border-2 border-border bg-surface p-4 sm:p-5 text-foreground flex flex-col items-center">
+        <TutorialContent currentPage={currentPage} />
 
-      {/* Option A: Clickable story-style progress bars */}
-      <div className="flex items-center gap-2 w-full max-w-[285px] sm:max-w-[300px] mx-auto mt-2 mb-1">
-        {Array.from({ length: TOTAL_PAGES }, (_, i) => i + 1).map((page) => (
-          <button
-            key={page}
-            type="button"
-            onClick={() => setCurrentPage(page)}
-            className="flex-1 py-2 group cursor-pointer focus:outline-none"
-            aria-label={`Jump to step ${page}`}
-          >
-            <div
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                currentPage === page
-                  ? "bg-primary shadow-[0_0_8px_var(--color-primary)]"
-                  : currentPage > page
-                  ? "bg-primary/50"
-                  : "bg-white/20 group-hover:bg-white/40"
-              }`}
-            />
-          </button>
-        ))}
+        {/* Option A: Clickable story-style progress bars */}
+        <div className="flex items-center gap-2 w-full max-w-[285px] sm:max-w-[300px] mx-auto mt-2 mb-1">
+          {Array.from({ length: TOTAL_PAGES }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              type="button"
+              onClick={() => handleSelectPage(page)}
+              className="flex-1 py-2 group cursor-pointer focus:outline-none"
+              aria-label={`Jump to step ${page}`}
+            >
+              <div
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  currentPage === page
+                    ? "bg-primary shadow-[0_0_8px_var(--color-primary)]"
+                    : currentPage > page
+                    ? "bg-primary/50"
+                    : "bg-white/20 group-hover:bg-white/40"
+                }`}
+              />
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-3 p-2 h-14 w-full rounded-lg bg-primary text-body hover:bg-primary-hover active:scale-95 cursor-pointer transition-transform"
+        >
+          Got it
+        </button>
       </div>
-
-      <button
-        type="button"
-        onClick={onClose}
-        className="mt-3 h-14 w-full rounded-lg bg-primary text-body hover:bg-primary-hover active:scale-95 cursor-pointer transition-transform"
-      >
-        Got it
-      </button>
-    </dialog>
+    </div>
   );
 }
