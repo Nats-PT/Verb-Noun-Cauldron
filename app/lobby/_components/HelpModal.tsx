@@ -83,7 +83,7 @@ export default function HelpModal({ open, onClose }: HelpModalProps) {
         <button
           type="button"
           onClick={onClose}
-          className="mt-3 h-14 w-full rounded-lg bg-primary text-body hover:bg-primary-hover active:scale-95 cursor-pointer transition-transform"
+          className="mt-3 p-2 h-14 w-full rounded-lg bg-primary text-body hover:bg-primary-hover active:scale-95 cursor-pointer transition-transform"
         >
           Got it
         </button>
